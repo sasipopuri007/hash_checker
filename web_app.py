@@ -17,14 +17,21 @@ from storage import TransferStorage
 
 config.init_directories()
 
-app = Flask(__name__, template_folder="templates")
+TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+app = Flask(__name__, template_folder=str(TEMPLATES_DIR))
 storage = TransferStorage()
 
 
 @app.route("/")
 def index():
     """Render the primary dashboard."""
-    return render_template("index.html")
+    try:
+        return render_template("index.html")
+    except Exception:
+        index_file = TEMPLATES_DIR / "index.html"
+        if index_file.exists():
+            return index_file.read_text(encoding="utf-8"), 200, {"Content-Type": "text/html; charset=utf-8"}
+        raise
 
 
 @app.route("/api/stats", methods=["GET"])
