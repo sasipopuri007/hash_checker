@@ -1,0 +1,6 @@
+# Secure Network File Transfer
+# Core application uses Python 3.8+ Standard Library exclusively:
+# socket, hashlib, json, struct, pathlib, uuid, sqlite3, logging, ssl
+
+# Testing dependency:
+pytest>=7.0.0

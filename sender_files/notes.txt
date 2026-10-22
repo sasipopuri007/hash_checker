@@ -1,0 +1,11 @@
+Network File Transfer Protocol Specification & Test Document
+=============================================================
+This is a sample document used to demonstrate the secure chunked TCP file transfer,
+SHA-256 integrity verification, and duplicate filename handling system.
+
+Key Features Tested:
+1. TCP stream chunking and reassembly
+2. Reliable length-prefixed framing
+3. Automatic SHA-256 digest comparison
+4. SQLite transfer record persistence
+5. UUID directory isolation for duplicate filenames

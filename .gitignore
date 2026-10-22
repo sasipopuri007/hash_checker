@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Testing & Caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases, certs, and logs
+data/*.db
+data/*.crt
+data/*.key
+logs/*.log
+received/*
+!received/.gitkeep
+
+# Environment & IDE
+.env
+.venv/
+env/
+venv/
+.vscode/
+.idea/

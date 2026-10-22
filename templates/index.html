@@ -1,0 +1,1093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Secure Network File Transfer & SHA-256 Hash Checker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 30, 49, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(30, 41, 67, 0.85);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --mono-font: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 10% 20%, #111827 0%, #0b0f19 90%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 1rem 2rem;
+    }
+
+    .header-content {
+      max-width: 1300px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 1.1rem;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.9rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 2rem;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      backdrop-filter: blur(10px);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 2rem;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tab-btn:hover {
+      color: var(--text-main);
+    }
+
+    .tab-btn.active {
+      color: #60a5fa;
+      border-bottom-color: #3b82f6;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Dropzone Card */
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      margin-bottom: 2rem;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    .dropzone {
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .dropzone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+
+    .dropzone-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .dropzone-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .file-input { display: none; }
+
+    .file-preview-list {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .file-preview-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      overflow: hidden;
+    }
+
+    .file-name {
+      font-weight: 500;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 350px;
+    }
+
+    .file-size {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--mono-font);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      border-radius: 7px;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    .progress-bar-bg {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--mono-font);
+    }
+
+    /* Verification Result Card */
+    .result-card {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      display: none;
+    }
+
+    .result-card.VERIFIED {
+      background: var(--success-bg);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .result-card.MISMATCH {
+      background: var(--danger-bg);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .result-card.FAILED {
+      background: var(--warning-bg);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .result-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .badge {
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: var(--mono-font);
+    }
+
+    .badge-verified { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-mismatch { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-failed { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-incomplete { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+    .result-details {
+      font-size: 0.85rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem;
+      color: var(--text-main);
+    }
+
+    .detail-item {
+      background: rgba(0, 0, 0, 0.2);
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+    }
+
+    .detail-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 0.25rem;
+    }
+
+    .detail-val {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      word-break: break-all;
+    }
+
+    /* Table */
+    .table-responsive {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th {
+      padding: 0.85rem 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      font-weight: 600;
+    }
+
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
+
+    tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .hash-cell {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #93c5fd;
+    }
+
+    .uuid-cell {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .action-group {
+      display: flex;
+      gap: 0.4rem;
+      align-items: center;
+    }
+
+    /* Duplicate Demo Graphic */
+    .diagram-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+
+    .diagram-box .accent { color: #60a5fa; }
+    .diagram-box .folder { color: #f59e0b; }
+    .diagram-box .file { color: #34d399; }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="brand">
+        <div class="logo-icon">#</div>
+        <div>
+          <div class="brand-title">Secure Network File Transfer & Hash Checker</div>
+          <div class="brand-sub">Python TCP Networking • SHA-256 Integrity Verification • UUID Directory Isolation</div>
+        </div>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="system-status-text">TCP Engine Active (Port 9999)</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Real-time Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Transfers</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-sub">Logged in transfers.db</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Verified Transfers</div>
+        <div class="stat-value" style="color: #34d399;" id="stat-verified">0</div>
+        <div class="stat-sub">Integrity confirmed 100%</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Integrity Mismatches</div>
+        <div class="stat-value" style="color: #f87171;" id="stat-mismatch">0</div>
+        <div class="stat-sub">Altered or corrupt files</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Failed / Incomplete</div>
+        <div class="stat-value" style="color: #fbbf24;" id="stat-failed">0</div>
+        <div class="stat-sub">Interrupted TCP reads</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('transfer-tab', this)">
+        <span>📤</span> Transfer Files (Sender)
+      </button>
+      <button class="tab-btn" onclick="switchTab('history-tab', this)">
+        <span>📋</span> Transfer History & Audit
+      </button>
+      <button class="tab-btn" onclick="switchTab('duplicate-tab', this)">
+        <span>🗂️</span> Duplicate Filename Strategy
+      </button>
+      <button class="tab-btn" onclick="switchTab('calc-tab', this)">
+        <span>🔍</span> Standalone Hash Checker
+      </button>
+    </div>
+
+    <!-- TAB 1: Transfer Files -->
+    <section id="transfer-tab" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Send Files over Network</h2>
+            <p class="card-desc">Files are assigned a UUID v4, SHA-256 hashed in 64KB chunks, and transferred safely into isolated directories.</p>
+          </div>
+          <div>
+            <button class="btn btn-secondary" onclick="loadSampleFile('report.pdf')">📄 Load Sample PDF</button>
+            <button class="btn btn-secondary" onclick="loadSampleFile('notes.txt')">📝 Load Sample Notes</button>
+          </div>
+        </div>
+
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+          <div class="dropzone-icon">📁</div>
+          <div class="dropzone-title">Click to browse or drag & drop files here</div>
+          <div class="dropzone-sub">Supports any file format (PDF, images, archives, docs, text). Arbitrarily large files streamed in chunks.</div>
+          <input type="file" id="file-input" class="file-input" multiple onchange="handleFileSelect(event)">
+        </div>
+
+        <div class="file-preview-list" id="file-list"></div>
+
+        <div class="progress-container" id="progress-box">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-text">
+            <span id="progress-status">Uploading & Hashing...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+          <button class="btn btn-primary" id="send-btn" onclick="uploadFiles()" style="display: none;">
+            🚀 Transfer File(s) Now
+          </button>
+          <button class="btn btn-secondary" id="clear-btn" onclick="clearSelectedFiles()" style="display: none;">
+            Clear Selection
+          </button>
+        </div>
+
+        <!-- Result Box -->
+        <div class="result-card" id="result-box">
+          <div class="result-header">
+            <h3 style="font-size: 1.1rem; font-weight: 600;" id="result-title">Transfer Status</h3>
+            <span class="badge" id="result-badge">VERIFIED</span>
+          </div>
+          <div class="result-details" id="result-details"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Transfer History & Audit -->
+    <section id="history-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Transfer History & SQLite Audit Trail</h2>
+            <p class="card-desc">Real-time records from data/transfers.db with one-click re-verification and tamper simulation.</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem;">
+            <button class="btn btn-secondary" onclick="fetchTransfers()">🔄 Refresh</button>
+            <button class="btn btn-primary" onclick="auditAll()">🛡️ Audit All Files on Disk</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Transfer UUID</th>
+                <th>Original Filename</th>
+                <th>Size</th>
+                <th>Expected SHA-256</th>
+                <th>Status</th>
+                <th>Created At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transfers-tbody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading transfer records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Duplicate Filename Strategy Visualizer -->
+    <section id="duplicate-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Duplicate Filename Collision Avoidance</h2>
+            <p class="card-desc">Section 5 Requirement: Never use filename alone as identity.</p>
+          </div>
+          <button class="btn btn-primary" onclick="simulateDuplicateTransfer()">⚡ Send 2 Duplicate 'report.pdf' Files</button>
+        </div>
+
+        <p style="font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem; color: #cbd5e1;">
+          When multiple clients transfer different files sharing the exact same name (e.g., <code style="color: #60a5fa;">report.pdf</code>),
+          the system generates a unique UUID v4 for each transfer and isolates the file inside its dedicated directory.
+          This guarantees zero accidental overwrites and ensures each file is verified against its own expected hash.
+        </p>
+
+        <div class="diagram-box">
+          <span class="folder">📁 received/</span><br>
+          │<br>
+          ├── <span class="folder">📁 1190028a-dd04-424e-ba53-d3638d14c7bc/</span> <span class="accent">&larr; (Transfer 1 UUID)</span><br>
+          │   └── <span class="file">📄 report.pdf</span> <span style="color: #94a3b8;">[SHA-256: cb2d16e3...]</span> &rarr; <span style="color:#34d399;">VERIFIED</span><br>
+          │<br>
+          └── <span class="folder">📁 827cc05a-b9be-4454-b1e3-99e071dc9908/</span> <span class="accent">&larr; (Transfer 2 UUID)</span><br>
+              └── <span class="file">📄 report.pdf</span> <span style="color: #94a3b8;">[SHA-256: 7f83b165...]</span> &rarr; <span style="color:#34d399;">VERIFIED</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Standalone Hash Checker -->
+    <section id="calc-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Independent File Integrity Hash Checker</h2>
+            <p class="card-desc">Calculate SHA-256 digest of any file and compare against an expected checksum.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 650px;">
+          <div>
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Select Local File</label>
+            <input type="file" id="calc-file-input" style="padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white;">
+          </div>
+          <div>
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Expected SHA-256 Hash (Optional for comparison)</label>
+            <input type="text" id="calc-hash-input" placeholder="e.g. cb2d16e3e4a82587b14e5332bc9eee6523d345cc5a2287a8850b122ca7a9e7a6" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-family: var(--mono-font); font-size: 0.85rem;">
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="computeStandaloneHash()">🔍 Calculate & Verify Hash</button>
+          </div>
+        </div>
+
+        <div id="calc-result" style="margin-top: 1.5rem; display: none;"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Secure Network File Transfer & SHA-256 Hash Checker • Python Standard Library + Flask Web Interface
+  </footer>
+
+  <script>
+    let selectedFiles = [];
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+
+      if (tabId === 'history-tab') {
+        fetchTransfers();
+      }
+    }
+
+    // Drag and drop handlers
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        addFiles(Array.from(e.dataTransfer.files));
+      }
+    });
+
+    function handleFileSelect(e) {
+      if (e.target.files.length > 0) {
+        addFiles(Array.from(e.target.files));
+      }
+    }
+
+    function addFiles(files) {
+      selectedFiles = selectedFiles.concat(files);
+      renderFileList();
+    }
+
+    function clearSelectedFiles() {
+      selectedFiles = [];
+      renderFileList();
+      document.getElementById('result-box').style.display = 'none';
+      document.getElementById('progress-box').style.display = 'none';
+    }
+
+    function renderFileList() {
+      const list = document.getElementById('file-list');
+      const sendBtn = document.getElementById('send-btn');
+      const clearBtn = document.getElementById('clear-btn');
+      list.innerHTML = '';
+
+      if (selectedFiles.length === 0) {
+        sendBtn.style.display = 'none';
+        clearBtn.style.display = 'none';
+        return;
+      }
+
+      sendBtn.style.display = 'inline-flex';
+      clearBtn.style.display = 'inline-flex';
+
+      selectedFiles.forEach((f, idx) => {
+        const item = document.createElement('div');
+        item.className = 'file-preview-item';
+        item.innerHTML = `
+          <div class="file-info">
+            <span style="font-size: 1.2rem;">📄</span>
+            <div>
+              <div class="file-name">${escapeHtml(f.name)}</div>
+              <div class="file-size">${formatBytes(f.size)}</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-danger" onclick="removeFile(${idx})">✕</button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function removeFile(idx) {
+      selectedFiles.splice(idx, 1);
+      renderFileList();
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    async function uploadFiles() {
+      if (selectedFiles.length === 0) return;
+
+      const progressBox = document.getElementById('progress-box');
+      const progressFill = document.getElementById('progress-fill');
+      const progressStatus = document.getElementById('progress-status');
+      const progressPercent = document.getElementById('progress-percent');
+      const sendBtn = document.getElementById('send-btn');
+
+      progressBox.style.display = 'block';
+      sendBtn.disabled = true;
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        progressStatus.textContent = `Transferring ${file.name} (${i+1}/${selectedFiles.length})...`;
+        progressPercent.textContent = `50%`;
+        progressFill.style.width = `50%`;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const resp = await fetch('/api/transfer', {
+            method: 'POST',
+            body: formData
+          });
+          const result = await resp.json();
+
+          progressFill.style.width = `100%`;
+          progressPercent.textContent = `100%`;
+          progressStatus.textContent = `Complete!`;
+
+          showResultCard(result);
+        } catch (err) {
+          alert('Upload failed: ' + err.message);
+        }
+      }
+
+      sendBtn.disabled = false;
+      fetchStats();
+      fetchTransfers();
+    }
+
+    function showResultCard(res) {
+      const box = document.getElementById('result-box');
+      const badge = document.getElementById('result-badge');
+      const title = document.getElementById('result-title');
+      const details = document.getElementById('result-details');
+
+      box.className = `result-card ${res.status}`;
+      box.style.display = 'block';
+
+      badge.className = `badge badge-${res.status.toLowerCase()}`;
+      badge.textContent = res.status;
+
+      title.textContent = `Transfer Result: ${res.filename} (${res.status})`;
+
+      details.innerHTML = `
+        <div class="detail-item">
+          <div class="detail-title">Transfer ID (UUID)</div>
+          <div class="detail-val">${res.transfer_id}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-title">File Size</div>
+          <div class="detail-val">${formatBytes(res.file_size)}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-title">Sender Expected SHA-256</div>
+          <div class="detail-val">${res.sender_hash || 'N/A'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-title">Receiver Computed SHA-256</div>
+          <div class="detail-val">${res.received_hash || 'N/A'}</div>
+        </div>
+        <div class="detail-item" style="grid-column: 1 / -1;">
+          <div class="detail-title">Verification Message</div>
+          <div class="detail-val">${escapeHtml(res.message || 'No details')}</div>
+        </div>
+      `;
+    }
+
+    async function fetchStats() {
+      try {
+        const resp = await fetch('/api/stats');
+        const data = await resp.json();
+        document.getElementById('stat-total').textContent = data.total;
+        document.getElementById('stat-verified').textContent = data.verified;
+        document.getElementById('stat-mismatch').textContent = data.mismatch;
+        document.getElementById('stat-failed').textContent = data.failed;
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      }
+    }
+
+    async function fetchTransfers() {
+      try {
+        const resp = await fetch('/api/transfers');
+        const list = await resp.json();
+        const tbody = document.getElementById('transfers-tbody');
+        tbody.innerHTML = '';
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No transfers recorded yet.</td></tr>`;
+          return;
+        }
+
+        list.forEach(r => {
+          const tr = document.createElement('tr');
+          const shortHash = (r.expected_hash || '').substring(0, 16) + '...';
+          const badgeClass = `badge-${r.status.toLowerCase()}`;
+          const dateStr = (r.created_at || '').substring(0, 19).replace('T', ' ');
+
+          tr.innerHTML = `
+            <td class="uuid-cell">${r.transfer_id}</td>
+            <td style="font-weight: 500;">${escapeHtml(r.original_filename)}</td>
+            <td style="font-family: var(--mono-font);">${formatBytes(r.file_size)}</td>
+            <td class="hash-cell" title="${r.expected_hash}">${shortHash}</td>
+            <td><span class="badge ${badgeClass}" id="badge-${r.transfer_id}">${r.status}</span></td>
+            <td style="font-size: 0.75rem; color: var(--text-muted);">${dateStr}</td>
+            <td>
+              <div class="action-group">
+                <button class="btn btn-sm btn-primary" onclick="verifySingle('${r.transfer_id}')">🔍 Verify</button>
+                <button class="btn btn-sm btn-danger" title="Corrupt file to test mismatch detection" onclick="tamperSingle('${r.transfer_id}')">⚡ Tamper</button>
+                <a class="btn btn-sm btn-secondary" href="/api/download/${r.transfer_id}" target="_blank">⬇️</a>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Failed to fetch transfers:', err);
+      }
+    }
+
+    async function verifySingle(transferId) {
+      try {
+        const resp = await fetch(`/api/verify/${transferId}`, { method: 'POST' });
+        const res = await resp.json();
+        const badge = document.getElementById(`badge-${transferId}`);
+        if (badge) {
+          badge.className = `badge badge-${res.status.toLowerCase()}`;
+          badge.textContent = res.status;
+        }
+        alert(`Verification Result for ${res.filename || transferId}:\nStatus: ${res.status}\n${res.message}`);
+        fetchStats();
+      } catch (err) {
+        alert('Verification error: ' + err.message);
+      }
+    }
+
+    async function tamperSingle(transferId) {
+      if (!confirm('This will modify the file bytes on disk to demonstrate that Hash Checker catches the integrity MISMATCH. Proceed?')) return;
+      try {
+        const resp = await fetch(`/api/tamper/${transferId}`, { method: 'POST' });
+        const res = await resp.json();
+        alert(res.message + '\nNow click "Verify" on this file to observe the MISMATCH report!');
+        fetchTransfers();
+        fetchStats();
+      } catch (err) {
+        alert('Tamper test error: ' + err.message);
+      }
+    }
+
+    async function auditAll() {
+      try {
+        const resp = await fetch('/api/verify-all', { method: 'POST' });
+        const res = await resp.json();
+        alert(`Audit Complete!\nVerified: ${res.verified}\nMismatches: ${res.mismatch}\nFailed: ${res.failed}`);
+        fetchTransfers();
+        fetchStats();
+      } catch (err) {
+        alert('Audit error: ' + err.message);
+      }
+    }
+
+    async function loadSampleFile(filename) {
+      try {
+        const resp = await fetch(`/api/sample/${filename}`);
+        const blob = await resp.blob();
+        const file = new File([blob], filename, { type: blob.type });
+        addFiles([file]);
+      } catch (err) {
+        alert('Could not load sample file: ' + err.message);
+      }
+    }
+
+    async function simulateDuplicateTransfer() {
+      alert("Triggering transfer of two distinct files both named 'report.pdf'...");
+      try {
+        const resp = await fetch('/api/demo/duplicate', { method: 'POST' });
+        const data = await resp.json();
+        alert(`Duplicate Transfer Success!\nTransfer 1 ID: ${data.transfer1.transfer_id}\nTransfer 2 ID: ${data.transfer2.transfer_id}\nBoth stored safely in distinct UUID folders!`);
+        fetchStats();
+        fetchTransfers();
+        switchTab('history-tab', document.querySelectorAll('.tab-btn')[1]);
+      } catch (err) {
+        alert('Duplicate test failed: ' + err.message);
+      }
+    }
+
+    async function computeStandaloneHash() {
+      const fileInput = document.getElementById('calc-file-input');
+      const hashInput = document.getElementById('calc-hash-input');
+      const resultDiv = document.getElementById('calc-result');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select a file first.');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      if (hashInput.value.trim()) {
+        formData.append('expected_hash', hashInput.value.trim());
+      }
+
+      try {
+        const resp = await fetch('/api/check-file', {
+          method: 'POST',
+          body: formData
+        });
+        const res = await resp.json();
+        resultDiv.style.display = 'block';
+
+        const matchHtml = res.expected_hash ? 
+          `<div style="margin-top: 0.5rem;"><span class="badge badge-${res.status.toLowerCase()}">${res.status}</span> ${res.message}</div>` : '';
+
+        resultDiv.innerHTML = `
+          <div class="detail-item" style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 10px;">
+            <div class="detail-title">Calculated SHA-256 Digest</div>
+            <div class="detail-val" style="color: #60a5fa; font-size: 0.95rem; margin-top: 0.25rem;">${res.calculated_hash}</div>
+            ${matchHtml}
+          </div>
+        `;
+      } catch (err) {
+        alert('Hash computation failed: ' + err.message);
+      }
+    }
+
+    // Initial load
+    fetchStats();
+    fetchTransfers();
+  </script>
+</body>
+</html>
