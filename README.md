@@ -46,8 +46,9 @@ sequenceDiagram
 3. **Robust TCP Framing & Reliable Reads**:
    - `protocol.py` implements 4-byte big-endian framing (`!I`) for metadata JSON.
    - `recv_exact` guarantees exact byte counts despite TCP stream packet fragmentation.
-4. **SQLite Transfer Auditing**:
-   - `storage.py` tracks transfer UUID, original filename, file size, sender hash, receiver hash, stored path, timestamps, and status (`VERIFIED`, `MISMATCH`, `FAILED`, `INCOMPLETE`).
+4. **MongoDB Atlas Cloud & SQLite Transfer Auditing**:
+   - `storage.py` supports **MongoDB Atlas** cloud database storage (`cluster0.o9543g6.mongodb.net`) and local **SQLite** (`data/transfers.db`) with automatic failover.
+   - Tracks transfer UUID, original filename, file size, sender hash, receiver hash, stored path, timestamps, and status (`VERIFIED`, `MISMATCH`, `FAILED`, `INCOMPLETE`).
 5. **Interactive & Manual Hash Checker**:
    - Automatic verification immediately upon file receipt.
    - `hash_checker.py verify <uuid>` re-verifies stored files on disk.

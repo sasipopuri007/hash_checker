@@ -40,7 +40,8 @@ def get_stats():
         "total": total,
         "verified": verified,
         "mismatch": mismatch,
-        "failed": failed
+        "failed": failed,
+        "backend": getattr(storage, "backend_name", "mongodb")
     })
 
 

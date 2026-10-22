@@ -563,7 +563,7 @@
       <div class="stat-card">
         <div class="stat-label">Total Transfers</div>
         <div class="stat-value" id="stat-total">0</div>
-        <div class="stat-sub">Logged in transfers.db</div>
+        <div class="stat-sub" id="stat-total-sub">Logged in MongoDB Atlas</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Verified Transfers</div>
@@ -934,6 +934,14 @@
         document.getElementById('stat-verified').textContent = data.verified;
         document.getElementById('stat-mismatch').textContent = data.mismatch;
         document.getElementById('stat-failed').textContent = data.failed;
+        if (data.backend) {
+          const isMongo = data.backend.toLowerCase() === 'mongodb';
+          document.getElementById('system-status-text').textContent = isMongo ? 'MongoDB Atlas Connected (Cluster0)' : 'SQLite Local DB';
+          const subEl = document.getElementById('stat-total-sub');
+          if (subEl) {
+            subEl.textContent = isMongo ? 'Logged in MongoDB Atlas' : 'Logged in transfers.db';
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch stats:', err);
       }
