@@ -87,12 +87,22 @@ def send_file(
         print(f"File size:         {file_size:,} bytes")
         print(f"Target:            {host}:{port}")
 
-    # Compute SHA-256 hash using chunked streaming
+    # Compute Dual SHA-256 and SHA-3-256 hashes & Block Power Index
+    from hash_utils import calculate_dual_hash
+    from advanced_hash import BlockPowerIndexer
+
     start_hash_time = time.time()
-    file_hash = calculate_sha256(path, chunk_size=chunk_size)
+    dual = calculate_dual_hash(path, chunk_size=chunk_size)
+    file_hash = dual["sha256"]
+    sha3_hash = dual["sha3_256"]
+    indexer = BlockPowerIndexer()
+    block_index = indexer.compute_block_index(path)
     hash_duration = time.time() - start_hash_time
+
     if not quiet:
         print(f"Sender SHA-256:    {file_hash} (computed in {hash_duration:.3f}s)")
+        print(f"Sender SHA-3-256:  {sha3_hash} [Keccak Permutation Sponge]")
+        print(f"Block Power Index: {len(block_index)} blocks indexed for tamper localization")
         print(f"{'-'*70}")
 
     metadata = {
@@ -100,6 +110,8 @@ def send_file(
         "original_filename": filename,
         "file_size": file_size,
         "sha256": file_hash,
+        "sha3_256": sha3_hash,
+        "block_index": block_index,
         "auth_token": auth_token
     }
 

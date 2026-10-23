@@ -1,8 +1,14 @@
 """
 Hash Checker module and CLI utility.
-Supports automatic verification checks after transfer and manual re-checking later.
-Provides verification by transfer ID, standalone file checking against expected hash,
-transfer history querying, and audit verification of all stored files.
+Extended with capabilities from:
+'Exploring Secure Hashing Algorithms for Data Integrity Verification' (Gilbert & Gilbert, 2025).
+
+Features:
+- Dual SHA-256 + SHA-3-256 integrity verification
+- Fine-Grained Tamper Localization via Block Power Indexing (Section 7.1, RQ v)
+- Avalanche Effect Bit Diffusion Analyzer (Section II & IV)
+- Multi-Algorithm Cryptographic Performance Benchmark (Table 3, Section IX)
+- Full-disk database audit utility
 """
 
 import argparse
@@ -10,8 +16,9 @@ from pathlib import Path
 import sys
 from typing import Dict, Any, Optional
 
+from advanced_hash import BlockPowerIndexer, AvalancheAnalyzer, AlgorithmBenchmark
 import config
-from hash_utils import calculate_sha256
+from hash_utils import calculate_sha256, calculate_dual_hash
 from storage import TransferStorage
 
 config.init_directories()
@@ -19,11 +26,9 @@ config.init_directories()
 
 def verify_transfer(transfer_id: str, storage: Optional[TransferStorage] = None) -> Dict[str, Any]:
     """
-    Manually re-verify a transfer by recalculating the SHA-256 digest of the stored file
-    and comparing it against the expected sender hash recorded in SQLite.
-    
-    Returns:
-        Dictionary with status ('VERIFIED', 'MISMATCH', 'FAILED') and details.
+    Re-verify a transfer by recalculating SHA-256 and SHA-3-256 digests.
+    If corruption is detected, automatically runs Block Power Indexing to pinpoint
+    the exact corrupted byte offsets and blocks.
     """
     storage = storage or TransferStorage()
     record = storage.get_transfer(transfer_id)
@@ -36,6 +41,8 @@ def verify_transfer(transfer_id: str, storage: Optional[TransferStorage] = None)
 
     stored_path = Path(record["stored_path"])
     expected_hash = record["expected_hash"]
+    expected_sha3 = record.get("sha3_256")
+    block_index = record.get("block_index")
 
     if not stored_path.exists():
         err_msg = f"Stored file does not exist on disk: {stored_path}"
@@ -47,17 +54,44 @@ def verify_transfer(transfer_id: str, storage: Optional[TransferStorage] = None)
             "error": err_msg
         }
 
-    # Recalculate SHA-256 of stored file in chunks
-    calculated_hash = calculate_sha256(stored_path)
+    # Recalculate dual hashes (SHA-256 + SHA-3-256)
+    dual = calculate_dual_hash(stored_path)
+    calc_sha256 = dual["sha256"].lower()
+    calc_sha3 = dual["sha3_256"].lower()
 
-    if calculated_hash.lower() == expected_hash.lower():
+    sha256_matches = (calc_sha256 == expected_hash.lower())
+    sha3_matches = (not expected_sha3 or calc_sha3 == expected_sha3.lower())
+
+    tamper_report = None
+
+    if sha256_matches and sha3_matches:
         status = "VERIFIED"
-        msg = "Hash verified: contents match expected sender digest."
-        storage.update_verification(transfer_id, calculated_hash, status, error_message=None)
+        msg = "Dual-layer hash verified: contents match expected SHA-256 and SHA-3-256 digests."
+        storage.update_verification(
+            transfer_id=transfer_id,
+            received_hash=calc_sha256,
+            status=status,
+            error_message=None,
+            received_sha3=calc_sha3,
+            tamper_localization=None
+        )
     else:
         status = "MISMATCH"
-        msg = f"Hash MISMATCH: expected {expected_hash}, calculated {calculated_hash}"
-        storage.update_verification(transfer_id, calculated_hash, status, error_message=msg)
+        msg = f"Hash MISMATCH: expected {expected_hash}, calculated {calc_sha256}"
+        # Block Power Indexing Tamper Localization
+        if block_index:
+            indexer = BlockPowerIndexer()
+            tamper_report = indexer.localize_tampering(stored_path, block_index)
+            msg += f" | {tamper_report.get('summary', '')}"
+
+        storage.update_verification(
+            transfer_id=transfer_id,
+            received_hash=calc_sha256,
+            status=status,
+            error_message=msg,
+            received_sha3=calc_sha3,
+            tamper_localization=tamper_report
+        )
 
     return {
         "status": status,
@@ -65,21 +99,38 @@ def verify_transfer(transfer_id: str, storage: Optional[TransferStorage] = None)
         "filename": record["original_filename"],
         "stored_path": str(stored_path),
         "expected_hash": expected_hash,
-        "calculated_hash": calculated_hash,
+        "calculated_hash": calc_sha256,
+        "expected_sha3": expected_sha3,
+        "calculated_sha3": calc_sha3,
+        "tamper_localization": tamper_report,
         "message": msg
     }
 
 
-def check_file(file_path: Path, expected_hash: str) -> Dict[str, Any]:
-    """
-    Manually calculate the SHA-256 hash of any file and compare against an expected hash.
-    """
-    path = Path(file_path).resolve()
-    if not path.is_file():
+def localize_tampering_cli(transfer_id: str, storage: Optional[TransferStorage] = None) -> Dict[str, Any]:
+    """Isolate and pinpoint exact corrupted blocks using Block Power Indexing."""
+    storage = storage or TransferStorage()
+    record = storage.get_transfer(transfer_id)
+    if not record:
+        return {"status": "FAILED", "error": f"Record not found: {transfer_id}"}
+
+    stored_path = Path(record["stored_path"])
+    block_index = record.get("block_index")
+    if not block_index:
         return {
             "status": "FAILED",
-            "error": f"File does not exist: {path}"
+            "error": "No Block Power Index recorded for this transfer. Cannot localize at block granularity."
         }
+
+    indexer = BlockPowerIndexer()
+    return indexer.localize_tampering(stored_path, block_index)
+
+
+def check_file(file_path: Path, expected_hash: str) -> Dict[str, Any]:
+    """Manually calculate SHA-256 and compare against an expected hash."""
+    path = Path(file_path).resolve()
+    if not path.is_file():
+        return {"status": "FAILED", "error": f"File does not exist: {path}"}
 
     calculated = calculate_sha256(path)
     clean_expected = expected_hash.strip().lower()
@@ -106,7 +157,10 @@ def print_card(title: str, fields: Dict[str, Any]) -> None:
     print(f" {title}")
     print(f"{'='*75}")
     for k, v in fields.items():
-        print(f" {k:<18}: {v}")
+        if k == "tamper_localization" and isinstance(v, dict):
+            print(f" {'Tamper Report':<18}: {v.get('summary')}")
+        else:
+            print(f" {k:<18}: {v}")
     print(f"{'='*75}\n")
 
 
@@ -115,6 +169,73 @@ def cmd_verify(args):
     print_card(f"VERIFICATION RESULT: {result.get('status')}", result)
     if result.get("status") != "VERIFIED":
         sys.exit(1)
+
+
+def cmd_localize(args):
+    res = localize_tampering_cli(args.transfer_id)
+    print(f"\n{'='*85}")
+    print(f" BLOCK POWER INDEXING: TAMPER LOCALIZATION (Section 7.1, RQ v)")
+    print(f"{'='*85}")
+    print(f" Status:              {res.get('status')}")
+    print(f" Total Blocks:        {res.get('total_blocks')}")
+    print(f" Intact Blocks:       {res.get('intact_count')}")
+    print(f" Corrupted Blocks:    {res.get('corrupted_count')}")
+    print(f" Corruption Ratio:    {res.get('corruption_percentage')}% of file")
+    print(f" Summary:             {res.get('summary')}")
+    print(f"{'-'*85}")
+
+    corrupted = res.get("corrupted_blocks", [])
+    if corrupted:
+        print(f"{'Block ID':<10} {'Byte Offset Range':<25} {'Reason':<25}")
+        print(f"{'-'*85}")
+        for c in corrupted:
+            start = f"{c.get('offset_start', 0):,}"
+            end = f"{c.get('offset_end', 0):,}"
+            range_str = f"[{start} - {end}]"
+            print(f"#{c.get('block_id'):<9} {range_str:<25} {c.get('reason'):<25}")
+        print(f"{'='*85}\n")
+    else:
+        print(" All blocks intact. Zero tamper anomalies detected.\n")
+
+
+def cmd_avalanche(args):
+    path = Path(args.path)
+    if path.is_file():
+        data = path.read_bytes()
+    else:
+        data = args.path.encode("utf-8")
+
+    res = AvalancheAnalyzer.calculate_avalanche(data, algorithm=args.algorithm.lower())
+    print(f"\n{'='*75}")
+    print(f" AVALANCHE EFFECT & BIT DIFFUSION ANALYSIS (Section II & IV)")
+    print(f"{'='*75}")
+    print(f" Algorithm:           {res['algorithm']}")
+    print(f" Total Output Bits:   {res['total_digest_bits']} bits")
+    print(f" Bits Flipped (1-bit):{res['flipped_bits']} bits")
+    print(f" Avalanche Metric:    {res['avalanche_percentage']}% (Target: 50.0%)")
+    print(f" Diffusion Score:     {res['diffusion_score']}/100")
+    print(f" Evaluation:          {res['verdict']}")
+    print(f"{'-'*75}")
+    print(f" Original Digest:     {res['original_hex']}")
+    print(f" Perturbed Digest:    {res['perturbed_hex']}")
+    print(f"{'='*75}\n")
+
+
+def cmd_benchmark(args):
+    print(f"\nRunning Cryptographic Algorithm Benchmark (Gilbert & Gilbert Table 3)...")
+    results = AlgorithmBenchmark.run_benchmark(data_size_mb=args.size_mb)
+    print(f"\n{'='*95}")
+    print(f"{'Algorithm':<12} {'Family':<10} {'Construction':<20} {'Speed (MB/s)':<15} {'Latency (ms)':<15} {'Status'}")
+    print(f"{'-'*95}")
+    for r in results:
+        algo = r["algorithm"]
+        fam = r["family"]
+        const = r["construction"]
+        speed = str(r["throughput_mb_s"])
+        lat = str(r["latency_ms"])
+        sec = r["security_status"]
+        print(f"{algo:<12} {fam:<10} {const:<20} {speed:<15} {lat:<15} {sec}")
+    print(f"{'='*95}\n")
 
 
 def cmd_check_file(args):
@@ -185,13 +306,29 @@ def cmd_verify_all(args):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="SHA-256 Hash Checker and Transfer Audit Utility")
+    parser = argparse.ArgumentParser(description="Advanced Cryptographic Integrity Verification CLI")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     # verify <transfer_id>
     p_verify = subparsers.add_parser("verify", help="Re-verify a received transfer using its UUID")
     p_verify.add_argument("transfer_id", help="Transfer UUID")
     p_verify.set_defaults(func=cmd_verify)
+
+    # localize <transfer_id>
+    p_loc = subparsers.add_parser("localize", help="Pinpoint corrupted blocks via Block Power Indexing")
+    p_loc.add_argument("transfer_id", help="Transfer UUID")
+    p_loc.set_defaults(func=cmd_localize)
+
+    # avalanche <path_or_text>
+    p_ava = subparsers.add_parser("avalanche", help="Analyze Avalanche Effect bit diffusion on 1-bit perturbation")
+    p_ava.add_argument("path", help="File path or text string to analyze")
+    p_ava.add_argument("--algorithm", default="sha256", choices=["sha256", "sha3_256", "sha512", "md5"], help="Algorithm to test")
+    p_ava.set_defaults(func=cmd_avalanche)
+
+    # benchmark
+    p_bench = subparsers.add_parser("benchmark", help="Benchmark SHA family throughput and security metrics")
+    p_bench.add_argument("--size-mb", type=float, default=2.0, help="Test payload size in MB (default: 2.0)")
+    p_bench.set_defaults(func=cmd_benchmark)
 
     # check-file <path> <expected_hash>
     p_check = subparsers.add_parser("check-file", help="Calculate SHA-256 of any file and compare with expected hash")
@@ -200,7 +337,7 @@ def main():
     p_check.set_defaults(func=cmd_check_file)
 
     # list [--status]
-    p_list = subparsers.add_parser("list", help="List transfer history from SQLite database")
+    p_list = subparsers.add_parser("list", help="List transfer history from database")
     p_list.add_argument("--status", choices=["VERIFIED", "MISMATCH", "FAILED", "INCOMPLETE"], help="Filter by status")
     p_list.add_argument("--limit", type=int, default=50, help="Maximum number of records to display")
     p_list.set_defaults(func=cmd_list)

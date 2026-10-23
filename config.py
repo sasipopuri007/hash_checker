@@ -35,7 +35,7 @@ DEFAULT_PORT = int(os.environ.get("NFT_PORT", "9999"))
 
 # Transfer & buffer limits
 BUFFER_SIZE = int(os.environ.get("NFT_BUFFER_SIZE", 64 * 1024))  # 64 KB chunk size
-MAX_METADATA_SIZE = 64 * 1024  # 64 KB limit for JSON metadata header
+MAX_METADATA_SIZE = 512 * 1024  # 512 KB limit for JSON metadata header (supports Block Power Index)
 MAX_FILE_SIZE = int(os.environ.get("NFT_MAX_FILE_SIZE", 10 * 1024 * 1024 * 1024))  # 10 GB limit
 
 # Security & Authentication

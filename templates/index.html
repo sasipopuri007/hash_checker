@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Secure Network File Transfer & SHA-256 Hash Checker</title>
+  <title>Advanced Cryptographic Integrity Verification & Hash Checker</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #0b0f19;
@@ -38,7 +38,7 @@
 
     header {
       border-bottom: 1px solid var(--card-border);
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(12px);
       position: sticky;
       top: 0;
@@ -47,7 +47,7 @@
     }
 
     .header-content {
-      max-width: 1300px;
+      max-width: 1400px;
       margin: 0 auto;
       display: flex;
       justify-content: space-between;
@@ -63,17 +63,17 @@
     }
 
     .logo-icon {
-      width: 36px;
-      height: 36px;
+      width: 40px;
+      height: 40px;
       background: linear-gradient(135deg, #3b82f6, #8b5cf6);
       border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      font-weight: 700;
-      font-size: 1.1rem;
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      font-weight: 800;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
     }
 
     .brand-title {
@@ -91,7 +91,7 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 0.4rem 0.9rem;
+      padding: 0.45rem 1rem;
       border-radius: 9999px;
       font-size: 0.8rem;
       font-weight: 500;
@@ -115,7 +115,7 @@
     }
 
     .container {
-      max-width: 1300px;
+      max-width: 1400px;
       margin: 0 auto;
       padding: 2rem;
       width: 100%;
@@ -170,36 +170,36 @@
       gap: 0.5rem;
       border-bottom: 1px solid var(--card-border);
       margin-bottom: 2rem;
+      overflow-x: auto;
+      white-space: nowrap;
+      padding-bottom: 2px;
     }
 
     .tab-btn {
       background: transparent;
       border: none;
       color: var(--text-muted);
-      padding: 0.75rem 1.25rem;
-      font-size: 0.95rem;
+      padding: 0.75rem 1.15rem;
+      font-size: 0.9rem;
       font-weight: 500;
       cursor: pointer;
       border-bottom: 2px solid transparent;
       transition: all 0.2s;
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 0.45rem;
     }
 
-    .tab-btn:hover {
-      color: var(--text-main);
-    }
-
+    .tab-btn:hover { color: var(--text-main); }
     .tab-btn.active {
       color: #60a5fa;
       border-bottom-color: #3b82f6;
+      font-weight: 600;
     }
 
     .tab-content { display: none; }
     .tab-content.active { display: block; }
 
-    /* Dropzone Card */
     .card {
       background: var(--card-bg);
       border: 1px solid var(--card-border);
@@ -230,6 +230,7 @@
       margin-top: 0.25rem;
     }
 
+    /* Dropzone */
     .dropzone {
       border: 2px dashed rgba(255, 255, 255, 0.15);
       border-radius: 14px;
@@ -348,6 +349,16 @@
       background: rgba(239, 68, 68, 0.3);
     }
 
+    .btn-purple {
+      background: rgba(139, 92, 246, 0.2);
+      color: #c084fc;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-purple:hover {
+      background: rgba(139, 92, 246, 0.35);
+    }
+
     .btn-sm {
       padding: 0.4rem 0.75rem;
       font-size: 0.75rem;
@@ -383,7 +394,7 @@
       font-family: var(--mono-font);
     }
 
-    /* Verification Result Card */
+    /* Result Card */
     .result-card {
       margin-top: 1.5rem;
       padding: 1.25rem;
@@ -410,13 +421,6 @@
       color: #fbbf24;
     }
 
-    .result-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 0.75rem;
-    }
-
     .badge {
       padding: 0.25rem 0.6rem;
       border-radius: 6px;
@@ -441,15 +445,17 @@
     }
 
     .detail-item {
-      background: rgba(0, 0, 0, 0.2);
-      padding: 0.6rem 0.8rem;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.75rem 0.9rem;
       border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
     }
 
     .detail-title {
       font-size: 0.7rem;
       color: var(--text-muted);
       text-transform: uppercase;
+      letter-spacing: 0.05em;
       margin-bottom: 0.25rem;
     }
 
@@ -460,16 +466,8 @@
     }
 
     /* Table */
-    .table-responsive {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      text-align: left;
-    }
-
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
     th {
       padding: 0.85rem 1rem;
       font-size: 0.75rem;
@@ -479,17 +477,13 @@
       border-bottom: 1px solid var(--card-border);
       font-weight: 600;
     }
-
     td {
       padding: 1rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.05);
       font-size: 0.85rem;
       vertical-align: middle;
     }
-
-    tr:hover td {
-      background: rgba(255, 255, 255, 0.02);
-    }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
 
     .hash-cell {
       font-family: var(--mono-font);
@@ -509,11 +503,77 @@
 
     .action-group {
       display: flex;
-      gap: 0.4rem;
+      gap: 0.35rem;
       align-items: center;
+      flex-wrap: wrap;
     }
 
-    /* Duplicate Demo Graphic */
+    /* Block Power Indexing Heatmap Grid */
+    .block-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .block-card {
+      border-radius: 10px;
+      padding: 0.85rem;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .block-card.intact {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .block-card.corrupted {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: #ef4444;
+      color: #f87171;
+      animation: pulse-border 1.5s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+      50% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+    }
+
+    .block-num { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .block-range { color: var(--text-muted); font-size: 0.7rem; }
+    .block-status { font-weight: 600; margin-top: 0.35rem; }
+
+    /* Avalanche Meter */
+    .avalanche-meter {
+      height: 24px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      margin: 1rem 0;
+    }
+
+    .avalanche-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b);
+      transition: width 0.5s ease-out;
+    }
+
+    .ideal-marker {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ffffff;
+      box-shadow: 0 0 6px white;
+      z-index: 2;
+    }
+
     .diagram-box {
       background: rgba(15, 23, 42, 0.7);
       border: 1px solid var(--card-border);
@@ -546,13 +606,13 @@
       <div class="brand">
         <div class="logo-icon">#</div>
         <div>
-          <div class="brand-title">Secure Network File Transfer & Hash Checker</div>
-          <div class="brand-sub">Python TCP Networking • SHA-256 Integrity Verification • UUID Directory Isolation</div>
+          <div class="brand-title">Advanced Cryptographic Integrity Verification & Hash Checker</div>
+          <div class="brand-sub">Based on Gilbert & Gilbert (2025) • Dual SHA-256 + SHA-3 • Block Power Indexing • MongoDB Atlas</div>
         </div>
       </div>
       <div class="status-pill">
         <span class="status-dot"></span>
-        <span id="system-status-text">TCP Engine Active (Port 9999)</span>
+        <span id="system-status-text">Connecting to Storage Engine...</span>
       </div>
     </div>
   </header>
@@ -568,17 +628,17 @@
       <div class="stat-card">
         <div class="stat-label">Verified Transfers</div>
         <div class="stat-value" style="color: #34d399;" id="stat-verified">0</div>
-        <div class="stat-sub">Integrity confirmed 100%</div>
+        <div class="stat-sub">Dual-Layer SHA-256 + SHA-3</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Integrity Mismatches</div>
         <div class="stat-value" style="color: #f87171;" id="stat-mismatch">0</div>
-        <div class="stat-sub">Altered or corrupt files</div>
+        <div class="stat-sub">Localized via Block Indexing</div>
       </div>
       <div class="stat-card">
         <div class="stat-label">Failed / Incomplete</div>
         <div class="stat-value" style="color: #fbbf24;" id="stat-failed">0</div>
-        <div class="stat-sub">Interrupted TCP reads</div>
+        <div class="stat-sub">Interrupted TCP Reads</div>
       </div>
     </div>
 
@@ -589,6 +649,15 @@
       </button>
       <button class="tab-btn" onclick="switchTab('history-tab', this)">
         <span>📋</span> Transfer History & Audit
+      </button>
+      <button class="tab-btn" onclick="switchTab('localize-tab', this)">
+        <span>🎯</span> Tamper Localization (Block Power Index)
+      </button>
+      <button class="tab-btn" onclick="switchTab('avalanche-tab', this)">
+        <span>⚡</span> Avalanche Effect Lab
+      </button>
+      <button class="tab-btn" onclick="switchTab('benchmark-tab', this)">
+        <span>📊</span> Algorithm Benchmark (Table 3)
       </button>
       <button class="tab-btn" onclick="switchTab('duplicate-tab', this)">
         <span>🗂️</span> Duplicate Filename Strategy
@@ -603,8 +672,8 @@
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Send Files over Network</h2>
-            <p class="card-desc">Files are assigned a UUID v4, SHA-256 hashed in 64KB chunks, and transferred safely into isolated directories.</p>
+            <h2 class="card-title">Send Files with Dual-Layer Cryptographic Verification</h2>
+            <p class="card-desc">Simultaneously computes SHA-256 (Merkle–Damgård) and SHA-3-256 (Keccak Permutation Sponge), generating a Block Power Index for fine-grained tamper localization.</p>
           </div>
           <div>
             <button class="btn btn-secondary" onclick="loadSampleFile('report.pdf')">📄 Load Sample PDF</button>
@@ -615,7 +684,7 @@
         <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
           <div class="dropzone-icon">📁</div>
           <div class="dropzone-title">Click to browse or drag & drop files here</div>
-          <div class="dropzone-sub">Supports any file format (PDF, images, archives, docs, text). Arbitrarily large files streamed in chunks.</div>
+          <div class="dropzone-sub">Supports any digital file format. Computes dual SHA-256 + SHA-3 and block-by-block indexes on the fly.</div>
           <input type="file" id="file-input" class="file-input" multiple onchange="handleFileSelect(event)">
         </div>
 
@@ -626,7 +695,7 @@
             <div class="progress-bar-fill" id="progress-fill"></div>
           </div>
           <div class="progress-text">
-            <span id="progress-status">Uploading & Hashing...</span>
+            <span id="progress-status">Uploading & Generating Dual Cryptographic Digests...</span>
             <span id="progress-percent">0%</span>
           </div>
         </div>
@@ -656,10 +725,10 @@
       <div class="card">
         <div class="card-header">
           <div>
-            <h2 class="card-title">Transfer History & SQLite Audit Trail</h2>
-            <p class="card-desc">Real-time records from data/transfers.db with one-click re-verification and tamper simulation.</p>
+            <h2 class="card-title">Transfer History & Cloud Audit Trail</h2>
+            <p class="card-desc">Stored in MongoDB Atlas with dual digests (SHA-256 & SHA-3), Block Power Indexes, and one-click block tamper localization.</p>
           </div>
-          <div style="display: flex; gap: 0.75rem;">
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
             <button class="btn btn-secondary" onclick="fetchTransfers()">🔄 Refresh</button>
             <button class="btn btn-primary" onclick="auditAll()">🛡️ Audit All Files on Disk</button>
           </div>
@@ -672,7 +741,7 @@
                 <th>Transfer UUID</th>
                 <th>Original Filename</th>
                 <th>Size</th>
-                <th>Expected SHA-256</th>
+                <th>SHA-256 Digest</th>
                 <th>Status</th>
                 <th>Created At</th>
                 <th>Actions</th>
@@ -688,7 +757,112 @@
       </div>
     </section>
 
-    <!-- TAB 3: Duplicate Filename Strategy Visualizer -->
+    <!-- TAB 3: Block Power Indexing & Tamper Localization (Section 7.1, RQ v) -->
+    <section id="localize-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Block Power Indexing: Fine-Grained Tamper Localization</h2>
+            <p class="card-desc">Addressing Base Paper Research Question (v): Isolating and pinpointing the exact corrupted block(s) and byte offsets without manual inspection.</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <select id="localize-select" style="padding: 0.6rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; color: white;">
+              <option value="">Select a transfer to inspect...</option>
+            </select>
+            <button class="btn btn-primary" onclick="runLocalization()">🎯 Inspect Block Integrity</button>
+          </div>
+        </div>
+
+        <div id="localize-summary-box" style="margin-bottom: 1.5rem; display: none;"></div>
+
+        <div id="localize-grid" class="block-grid">
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2rem;">
+            Select a transfer above or click "Localize" in the Transfer History tab to view the block integrity heatmap.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Avalanche Effect & Bit Diffusion Lab (Section II & IV) -->
+    <section id="avalanche-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Avalanche Effect & Bit Diffusion Lab</h2>
+            <p class="card-desc">Theoretical Foundation (Section II & IV): A single bit change in the input should flip ~50% of the output digest bits (Strict Avalanche Criterion).</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          <div>
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Input Text / Data</label>
+            <textarea id="avalanche-text" rows="4" style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; color: white; font-family: var(--mono-font); font-size: 0.85rem;">Cryptographic Integrity Verification Baseline Data Gilbert 2025</textarea>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+              <div style="flex: 1;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Algorithm</label>
+                <select id="avalanche-algo" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); border-radius: 8px; color: white;">
+                  <option value="sha256">SHA-256 (Merkle–Damgård)</option>
+                  <option value="sha3_256">SHA-3-256 (Keccak Sponge)</option>
+                  <option value="sha512">SHA-512 (64-bit Systems)</option>
+                  <option value="md5">MD5 (Legacy Broken Algorithm)</option>
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Bit Position to Flip</label>
+                <input type="number" id="avalanche-bit" value="0" min="0" max="64" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); border-radius: 8px; color: white;">
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="margin-top: 1.25rem; width: 100%;" onclick="runAvalancheTest()">
+              ⚡ Flip 1 Bit & Measure Avalanche Effect
+            </button>
+          </div>
+
+          <!-- Output Panel -->
+          <div id="avalanche-output" style="background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.25rem;">
+            <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Avalanche Metric Output</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Click the button on the left to simulate a 1-bit perturbation.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Cryptographic Algorithm Benchmark (Table 3, Section IX) -->
+    <section id="benchmark-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Cryptographic Algorithm Benchmark (Gilbert & Gilbert 2025)</h2>
+            <p class="card-desc">Empirical comparison of throughput (MB/s), latency, and NIST security status across SHA families (Table 3 & Section IX).</p>
+          </div>
+          <button class="btn btn-primary" onclick="runBenchmark()">⚡ Run Benchmark (2 MB Payload)</button>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Family</th>
+                <th>Construction Type</th>
+                <th>Digest Bits</th>
+                <th>Throughput</th>
+                <th>Latency</th>
+                <th>NIST / Security Status</th>
+              </tr>
+            </thead>
+            <tbody id="benchmark-tbody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Click "Run Benchmark" to evaluate algorithms on your CPU.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: Duplicate Filename Strategy Visualizer -->
     <section id="duplicate-tab" class="tab-content">
       <div class="card">
         <div class="card-header">
@@ -702,7 +876,7 @@
         <p style="font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem; color: #cbd5e1;">
           When multiple clients transfer different files sharing the exact same name (e.g., <code style="color: #60a5fa;">report.pdf</code>),
           the system generates a unique UUID v4 for each transfer and isolates the file inside its dedicated directory.
-          This guarantees zero accidental overwrites and ensures each file is verified against its own expected hash.
+          This guarantees zero accidental overwrites and ensures each file is verified against its own expected hash in MongoDB Atlas.
         </p>
 
         <div class="diagram-box">
@@ -717,13 +891,13 @@
       </div>
     </section>
 
-    <!-- TAB 4: Standalone Hash Checker -->
+    <!-- TAB 7: Standalone Hash Checker -->
     <section id="calc-tab" class="tab-content">
       <div class="card">
         <div class="card-header">
           <div>
             <h2 class="card-title">Independent File Integrity Hash Checker</h2>
-            <p class="card-desc">Calculate SHA-256 digest of any file and compare against an expected checksum.</p>
+            <p class="card-desc">Calculate SHA-256 and SHA-3 digests of any file and compare against expected checksums.</p>
           </div>
         </div>
 
@@ -733,7 +907,7 @@
             <input type="file" id="calc-file-input" style="padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white;">
           </div>
           <div>
-            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Expected SHA-256 Hash (Optional for comparison)</label>
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Expected SHA-256 or SHA-3 Hash (Optional for comparison)</label>
             <input type="text" id="calc-hash-input" placeholder="e.g. cb2d16e3e4a82587b14e5332bc9eee6523d345cc5a2287a8850b122ca7a9e7a6" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-family: var(--mono-font); font-size: 0.85rem;">
           </div>
           <div>
@@ -747,11 +921,12 @@
   </main>
 
   <footer>
-    Secure Network File Transfer & SHA-256 Hash Checker • Python Standard Library + Flask Web Interface
+    Advanced Cryptographic Data Integrity Platform • Based on Gilbert & Gilbert (2025) • MongoDB Atlas Cloud Storage
   </footer>
 
   <script>
     let selectedFiles = [];
+    let currentTransfers = [];
 
     function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -761,6 +936,10 @@
 
       if (tabId === 'history-tab') {
         fetchTransfers();
+      } else if (tabId === 'localize-tab') {
+        populateLocalizeDropdown();
+      } else if (tabId === 'benchmark-tab') {
+        runBenchmark();
       }
     }
 
@@ -859,7 +1038,7 @@
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        progressStatus.textContent = `Transferring ${file.name} (${i+1}/${selectedFiles.length})...`;
+        progressStatus.textContent = `Computing SHA-256 + SHA-3 & Block Index for ${file.name}...`;
         progressPercent.textContent = `50%`;
         progressFill.style.width = `50%`;
 
@@ -875,7 +1054,7 @@
 
           progressFill.style.width = `100%`;
           progressPercent.textContent = `100%`;
-          progressStatus.textContent = `Complete!`;
+          progressStatus.textContent = `Complete! Dual-Layer Integrity Verified.`;
 
           showResultCard(result);
         } catch (err) {
@@ -904,23 +1083,23 @@
 
       details.innerHTML = `
         <div class="detail-item">
-          <div class="detail-title">Transfer ID (UUID)</div>
+          <div class="detail-title">Transfer UUID</div>
           <div class="detail-val">${res.transfer_id}</div>
         </div>
         <div class="detail-item">
-          <div class="detail-title">File Size</div>
-          <div class="detail-val">${formatBytes(res.file_size)}</div>
+          <div class="detail-title">File Size & Blocks</div>
+          <div class="detail-val">${formatBytes(res.file_size)} (${res.block_count || 1} Blocks Indexed)</div>
         </div>
         <div class="detail-item">
-          <div class="detail-title">Sender Expected SHA-256</div>
+          <div class="detail-title">SHA-256 Digest (Merkle–Damgård)</div>
           <div class="detail-val">${res.sender_hash || 'N/A'}</div>
         </div>
         <div class="detail-item">
-          <div class="detail-title">Receiver Computed SHA-256</div>
-          <div class="detail-val">${res.received_hash || 'N/A'}</div>
+          <div class="detail-title">SHA-3-256 Digest (Keccak Sponge)</div>
+          <div class="detail-val" style="color: #c084fc;">${res.sha3_256 || 'N/A'}</div>
         </div>
         <div class="detail-item" style="grid-column: 1 / -1;">
-          <div class="detail-title">Verification Message</div>
+          <div class="detail-title">Verification Outcome</div>
           <div class="detail-val">${escapeHtml(res.message || 'No details')}</div>
         </div>
       `;
@@ -951,6 +1130,7 @@
       try {
         const resp = await fetch('/api/transfers');
         const list = await resp.json();
+        currentTransfers = list;
         const tbody = document.getElementById('transfers-tbody');
         tbody.innerHTML = '';
 
@@ -969,13 +1149,14 @@
             <td class="uuid-cell">${r.transfer_id}</td>
             <td style="font-weight: 500;">${escapeHtml(r.original_filename)}</td>
             <td style="font-family: var(--mono-font);">${formatBytes(r.file_size)}</td>
-            <td class="hash-cell" title="${r.expected_hash}">${shortHash}</td>
+            <td class="hash-cell" title="SHA-256: ${r.expected_hash}&#10;SHA-3: ${r.sha3_256 || 'N/A'}">${shortHash}</td>
             <td><span class="badge ${badgeClass}" id="badge-${r.transfer_id}">${r.status}</span></td>
             <td style="font-size: 0.75rem; color: var(--text-muted);">${dateStr}</td>
             <td>
               <div class="action-group">
                 <button class="btn btn-sm btn-primary" onclick="verifySingle('${r.transfer_id}')">🔍 Verify</button>
-                <button class="btn btn-sm btn-danger" title="Corrupt file to test mismatch detection" onclick="tamperSingle('${r.transfer_id}')">⚡ Tamper</button>
+                <button class="btn btn-sm btn-purple" title="Inspect Block Power Index" onclick="jumpToLocalize('${r.transfer_id}')">🎯 Localize</button>
+                <button class="btn btn-sm btn-danger" title="Inject Tampered Bytes" onclick="tamperSingle('${r.transfer_id}')">⚡ Tamper</button>
                 <a class="btn btn-sm btn-secondary" href="/api/download/${r.transfer_id}" target="_blank">⬇️</a>
               </div>
             </td>
@@ -1004,15 +1185,196 @@
     }
 
     async function tamperSingle(transferId) {
-      if (!confirm('This will modify the file bytes on disk to demonstrate that Hash Checker catches the integrity MISMATCH. Proceed?')) return;
+      if (!confirm('This will modify the file on disk to test block-level tamper localization. Proceed?')) return;
       try {
         const resp = await fetch(`/api/tamper/${transferId}`, { method: 'POST' });
         const res = await resp.json();
-        alert(res.message + '\nNow click "Verify" on this file to observe the MISMATCH report!');
+        alert(res.message + '\nNow jump to "Tamper Localization" tab to inspect the exact corrupted block!');
         fetchTransfers();
         fetchStats();
+        jumpToLocalize(transferId);
       } catch (err) {
         alert('Tamper test error: ' + err.message);
+      }
+    }
+
+    function jumpToLocalize(transferId) {
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      switchTab('localize-tab', tabBtns[2]);
+      const sel = document.getElementById('localize-select');
+      populateLocalizeDropdown();
+      sel.value = transferId;
+      runLocalization();
+    }
+
+    function populateLocalizeDropdown() {
+      const sel = document.getElementById('localize-select');
+      sel.innerHTML = '<option value="">Select a transfer to inspect...</option>';
+      currentTransfers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.transfer_id;
+        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0, 8)}...) - ${t.status}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function runLocalization() {
+      const transferId = document.getElementById('localize-select').value;
+      if (!transferId) {
+        alert('Please select a transfer record first.');
+        return;
+      }
+
+      const grid = document.getElementById('localize-grid');
+      const sumBox = document.getElementById('localize-summary-box');
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Comparing Block Power Index against disk blocks...</div>';
+
+      try {
+        const resp = await fetch(`/api/localize/${transferId}`, { method: 'POST' });
+        const res = await resp.json();
+
+        if (res.status === 'FAILED') {
+          grid.innerHTML = `<div style="grid-column: 1 / -1; color: #f87171; text-align: center;">${res.error}</div>`;
+          return;
+        }
+
+        sumBox.style.display = 'block';
+        sumBox.innerHTML = `
+          <div style="background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--card-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 600;">Localization Summary: ${escapeHtml(res.filename)}</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">${escapeHtml(res.summary)}</p>
+              </div>
+              <span class="badge ${res.is_intact ? 'badge-verified' : 'badge-mismatch'}" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">
+                ${res.is_intact ? '100% INTACT' : `${res.corruption_percentage}% CORRUPTED`}
+              </span>
+            </div>
+            <div style="display: flex; gap: 2rem; margin-top: 1rem; font-size: 0.85rem;">
+              <div>Total Blocks: <strong>${res.total_blocks}</strong></div>
+              <div>Intact Blocks: <strong style="color: #34d399;">${res.intact_count}</strong></div>
+              <div>Corrupted Blocks: <strong style="color: #f87171;">${res.corrupted_count}</strong></div>
+              <div>Tampered Bytes: <strong>${res.tampered_bytes} / ${res.total_bytes} bytes</strong></div>
+            </div>
+          </div>
+        `;
+
+        grid.innerHTML = '';
+        const corruptedSet = new Map();
+        (res.corrupted_blocks || []).forEach(b => corruptedSet.set(b.block_id, b));
+
+        for (let i = 0; i < res.total_blocks; i++) {
+          const isCorr = corruptedSet.has(i);
+          const cData = corruptedSet.get(i);
+          const card = document.createElement('div');
+          card.className = `block-card ${isCorr ? 'corrupted' : 'intact'}`;
+
+          const startOffset = cData ? cData.offset_start : (i * 64 * 1024);
+          const endOffset = cData ? cData.offset_end : ((i + 1) * 64 * 1024);
+
+          card.innerHTML = `
+            <div class="block-num">Block #${i}</div>
+            <div class="block-range">[${startOffset.toLocaleString()} - ${endOffset.toLocaleString()} B]</div>
+            <div class="block-status">${isCorr ? '❌ TAMPERED' : '✅ INTACT'}</div>
+            ${isCorr ? `<div style="font-size: 0.65rem; color: #fca5a5; margin-top: 0.25rem;">${cData.reason}</div>` : ''}
+          `;
+          grid.appendChild(card);
+        }
+
+      } catch (err) {
+        grid.innerHTML = `<div style="grid-column: 1 / -1; color: #f87171; text-align: center;">Localization error: ${err.message}</div>`;
+      }
+    }
+
+    // Avalanche Effect Test
+    async function runAvalancheTest() {
+      const text = document.getElementById('avalanche-text').value;
+      const algo = document.getElementById('avalanche-algo').value;
+      const bit = document.getElementById('avalanche-bit').value;
+      const out = document.getElementById('avalanche-output');
+
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('algorithm', algo);
+      formData.append('bit_to_flip', bit);
+
+      out.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Computing bitwise diffusion...</div>';
+
+      try {
+        const resp = await fetch('/api/avalanche', { method: 'POST', body: formData });
+        const res = await resp.json();
+
+        out.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="font-size: 1rem; font-weight: 600;">${res.algorithm} Avalanche Metric</h4>
+            <span class="badge badge-verified">${res.verdict}</span>
+          </div>
+
+          <div style="font-size: 0.85rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Bit Divergence: <strong>${res.avalanche_percentage}%</strong></span>
+            <span>Target: <strong>50.0%</strong></span>
+          </div>
+
+          <div class="avalanche-meter">
+            <div class="ideal-marker" title="Ideal 50% Diffusion Mark"></div>
+            <div class="avalanche-fill" style="width: ${res.avalanche_percentage}%;"></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.8rem; margin-top: 1rem;">
+            <div class="detail-item">
+              <div class="detail-title">Output Digest Bits</div>
+              <div class="detail-val">${res.total_digest_bits} bits</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-title">Bits Flipped (1-Bit Input Change)</div>
+              <div class="detail-val" style="color: #60a5fa;">${res.flipped_bits} bits</div>
+            </div>
+          </div>
+
+          <div class="detail-item" style="margin-top: 0.75rem;">
+            <div class="detail-title">Original Hex Digest</div>
+            <div class="detail-val" style="color: #34d399;">${res.original_hex}</div>
+          </div>
+          <div class="detail-item" style="margin-top: 0.5rem;">
+            <div class="detail-title">Perturbed Hex Digest (1-bit change at bit ${res.flipped_bit_position})</div>
+            <div class="detail-val" style="color: #f87171;">${res.perturbed_hex}</div>
+          </div>
+        `;
+      } catch (err) {
+        out.innerHTML = `<div style="color: #f87171;">Avalanche test failed: ${err.message}</div>`;
+      }
+    }
+
+    // Benchmark Run
+    async function runBenchmark() {
+      const tbody = document.getElementById('benchmark-tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Benchmarking SHA families on local CPU...</td></tr>';
+
+      try {
+        const resp = await fetch('/api/benchmark?size_mb=2.0');
+        const data = await resp.json();
+        tbody.innerHTML = '';
+
+        data.results.forEach(r => {
+          const tr = document.createElement('tr');
+          const isSafe = r.is_secure;
+          tr.innerHTML = `
+            <td style="font-weight: 700; font-family: var(--mono-font);">${r.algorithm}</td>
+            <td>${r.family}</td>
+            <td style="font-family: var(--mono-font); color: #93c5fd;">${r.construction}</td>
+            <td>${r.digest_bits} bits</td>
+            <td style="font-family: var(--mono-font); font-weight: 600; color: #34d399;">${r.throughput_mb_s} MB/s</td>
+            <td style="font-family: var(--mono-font);">${r.latency_ms} ms</td>
+            <td>
+              <span class="badge ${isSafe ? 'badge-verified' : 'badge-mismatch'}" style="font-size: 0.7rem;">
+                ${r.security_status}
+              </span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #f87171;">Benchmark failed: ${err.message}</td></tr>`;
       }
     }
 
@@ -1085,6 +1447,8 @@
           <div class="detail-item" style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 10px;">
             <div class="detail-title">Calculated SHA-256 Digest</div>
             <div class="detail-val" style="color: #60a5fa; font-size: 0.95rem; margin-top: 0.25rem;">${res.calculated_hash}</div>
+            <div class="detail-title" style="margin-top: 0.75rem;">Calculated SHA-3-256 Digest (Sponge)</div>
+            <div class="detail-val" style="color: #c084fc; font-size: 0.95rem; margin-top: 0.25rem;">${res.sha3_256}</div>
             ${matchHtml}
           </div>
         `;

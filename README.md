@@ -1,6 +1,9 @@
-# Secure Network File Transfer with Sender, Receiver & Hash Checker
+# Advanced Cryptographic Data Integrity Platform & Network File Transfer
 
-A Python TCP networking application for secure, reliable file transfer with SHA-256 integrity verification, duplicate filename collision avoidance via UUID directory isolation, SQLite transfer history tracking, and automatic/manual hash audits.
+> **Based on the Research Paper:**  
+> *Chris Gilbert and Mercy Abiola Gilbert, “Exploring Secure Hashing Algorithms for Data Integrity Verification,” International Journal of Multidisciplinary Research and Publications (IJMRAP), Volume 7, Issue 11, pp. 373-390, 2025.*
+
+An advanced Python TCP networking and web platform for secure, reliable file transfer with **Dual-Layer SHA-256 + SHA-3-256 verification**, **Block Power Indexing for fine-grained tamper localization** (Section 7.1), **Substring Index Tables**, **Avalanche Effect analysis** (Section II & IV), **MongoDB Atlas cloud storage**, and **UUID-based duplicate filename collision avoidance**.
 
 ---
 
@@ -12,55 +15,49 @@ sequenceDiagram
     actor User as User / Client
     participant Sender as Sender (sender.py)
     participant Receiver as Receiver (receiver.py)
-    participant Storage as SQLite (transfers.db)
+    participant Storage as MongoDB Atlas / SQLite
     participant Disk as Received Directory
 
-    User->>Sender: Run sender.py with file(s)
+    User->>Sender: Run sender.py or Web Dashboard
     Sender->>Sender: Generate UUID v4 per file
-    Sender->>Sender: Compute SHA-256 digest (chunked)
-    Sender->>Receiver: Length-prefixed JSON metadata
+    Sender->>Sender: Compute Dual Hashes (SHA-256 + SHA-3-256)
+    Sender->>Sender: Build Block Power Index Table
+    Sender->>Receiver: Length-prefixed JSON metadata (dual hashes + block index)
     Receiver->>Receiver: Validate metadata & sanitize path
     Receiver->>Storage: Record transfer (status: INCOMPLETE)
     Sender->>Receiver: Stream file bytes (in 64KB chunks)
     Receiver->>Disk: Stream to received/<uuid>/<filename>
-    Receiver->>Receiver: Compute received SHA-256
-    Receiver->>Receiver: Compare expected vs received hash
-    Receiver->>Storage: Update status (VERIFIED or MISMATCH)
+    Receiver->>Receiver: Compute receiver SHA-256 & SHA-3-256 on the fly
+    Receiver->>Receiver: Verify dual-layer integrity
+    opt If Mismatch Detected
+        Receiver->>Receiver: Localize exact corrupted blocks & byte offsets
+    end
+    Receiver->>Storage: Update status (VERIFIED or MISMATCH with localization)
     Receiver->>Sender: Acknowledgment response
-    Sender->>User: Display transfer & verification report
+    Sender->>User: Display transfer report & block audit
 ```
 
 ---
 
-## Key Features
+## Key Features & Research Contributions
 
-1. **Duplicate Filename Strategy**:
-   - Filenames are never used as unique keys.
-   - Each transfer receives a dedicated UUID v4.
-   - Files are stored as `received/<uuid>/<original_filename>`.
-   - Multiple transfers sharing the same filename (e.g. `report.pdf`) never overwrite each other and maintain separate verification records in SQLite.
-2. **Chunked SHA-256 Hashing**:
-   - Hashing is performed in 64 KB streaming chunks via `hash_utils.py`.
-   - Arbitrarily large files can be transferred without memory exhaustion.
-   - Supports 0-byte empty files (`e3b0c44...`).
-3. **Robust TCP Framing & Reliable Reads**:
-   - `protocol.py` implements 4-byte big-endian framing (`!I`) for metadata JSON.
-   - `recv_exact` guarantees exact byte counts despite TCP stream packet fragmentation.
-4. **MongoDB Atlas Cloud & SQLite Transfer Auditing**:
-   - `storage.py` supports **MongoDB Atlas** cloud database storage (`cluster0.o9543g6.mongodb.net`) and local **SQLite** (`data/transfers.db`) with automatic failover.
-   - Tracks transfer UUID, original filename, file size, sender hash, receiver hash, stored path, timestamps, and status (`VERIFIED`, `MISMATCH`, `FAILED`, `INCOMPLETE`).
-5. **Interactive & Manual Hash Checker**:
-   - Automatic verification immediately upon file receipt.
-   - `hash_checker.py verify <uuid>` re-verifies stored files on disk.
-   - `hash_checker.py verify-all` audits entire transfer history for bitrot or file tampering.
-   - `hash_checker.py check-file` independently hashes arbitrary local files.
-   - `hash_checker.py list` displays full transfer history.
-6. **Security & Protection**:
-   - Path traversal prevention (`../../` or absolute paths are strictly sanitized to basenames).
-   - Maximum file size and metadata size enforcement.
-   - Shared token authentication (`auth_token`).
-   - Optional end-to-end TLS encryption support.
-   - Partial or interrupted transfers are safely renamed to `.incomplete` and recorded as `FAILED`, never marked `VERIFIED`.
+1. **Dual-Layer Cryptographic Verification (SHA-256 + SHA-3-256)**:
+   - Combines the industry-standard Merkle–Damgård construction (SHA-256) with the Keccak Permutation Sponge construction (SHA-3-256).
+   - Provides defense against length-extension attacks and post-quantum threat vectors as advocated in the paper (Section 2.2 & VII).
+2. **Block Power Indexing & Fine-Grained Tamper Localization (Section 7.1, RQ v)**:
+   - Rather than binary pass/fail detection, files are partitioned into power-indexed blocks.
+   - When corruption or tampering occurs, the engine pinpoints the **exact corrupted block number(s)**, **byte offset ranges**, and **percentage of altered data**.
+3. **Substring Index Tables (Section 7.1)**:
+   - Stores positional anchors for critical structural file headers, magic bytes, and markers for rapid localized verification.
+4. **Strict Avalanche Criterion (SAC) & Bit Diffusion Lab (Section II & IV)**:
+   - Evaluates the Avalanche Effect by flipping 1 bit in input data and measuring the Hamming distance bit divergence against the theoretical ~50% diffusion mark.
+5. **Cryptographic Algorithm Benchmark (Table 3, Section IX)**:
+   - Measures real-time throughput (MB/s) and latency on local hardware across MD5, SHA-1, SHA-256, SHA-512, and SHA-3-256, highlighting security vulnerabilities of deprecated algorithms.
+6. **Duplicate Filename Strategy (UUID Directory Isolation)**:
+   - Files are partitioned under `received/<uuid>/<original_filename>`.
+   - Multiple transfers sharing the identical filename (e.g. `report.pdf`) never overwrite each other.
+7. **Cloud & Local Storage Engine**:
+   - Integrates with **MongoDB Atlas** (`cluster0.o9543g6.mongodb.net`) with seamless automatic fallback to local **SQLite** (`data/transfers.db`).
 
 ---
 

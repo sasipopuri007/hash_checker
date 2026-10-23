@@ -138,10 +138,13 @@ class ReceiverServer:
             meta = protocol.recv_metadata(sock)
             logger.info(f"Received metadata from {addr}: {meta}")
 
+            # Metadata fields
             transfer_id = str(meta.get("transfer_id", "")).strip()
             raw_filename = meta.get("original_filename", "")
             file_size = meta.get("file_size")
             expected_hash = str(meta.get("sha256", "")).strip().lower()
+            expected_sha3 = str(meta.get("sha3_256", "")).strip().lower() if meta.get("sha3_256") else None
+            expected_blocks = meta.get("block_index")
             client_token = meta.get("auth_token")
 
             # Validate authentication
@@ -171,24 +174,27 @@ class ReceiverServer:
             safe_filename = protocol.sanitize_filename(raw_filename)
 
             # Step 2: Ensure UUID isolation directory
-            # Each transfer is saved in received/<uuid>/<safe_filename>
             transfer_dir = self.save_dir / transfer_id
             transfer_dir.mkdir(parents=True, exist_ok=True)
             target_path = transfer_dir / safe_filename
             part_path = transfer_dir / f"{safe_filename}.part"
 
-            # Step 3: Record initial state in SQLite as INCOMPLETE
+            # Step 3: Record initial state in Storage as INCOMPLETE
             self.storage.record_transfer(
                 transfer_id=transfer_id,
                 original_filename=safe_filename,
                 file_size=file_size,
                 expected_hash=expected_hash,
                 stored_path=str(target_path),
-                status="INCOMPLETE"
+                status="INCOMPLETE",
+                sha3_256=expected_sha3,
+                block_index=expected_blocks
             )
 
-            # Step 4: Stream file bytes to disk and calculate incremental hash
-            hasher = IncrementalHasher()
+            # Step 4: Stream file bytes to disk and calculate dual incremental hash (SHA-256 + SHA-3)
+            from hash_utils import DualIncrementalHasher
+            from advanced_hash import BlockPowerIndexer
+            hasher = DualIncrementalHasher()
             bytes_received = 0
 
             with open(part_path, "wb") as f:
@@ -203,30 +209,43 @@ class ReceiverServer:
                     hasher.update(chunk)
                     bytes_received += len(chunk)
 
-            # Step 5: Finalize file and compute receiver hash
+            # Step 5: Finalize file and compute receiver hashes
             if part_path.exists():
                 if target_path.exists():
                     target_path.unlink()
                 part_path.rename(target_path)
 
-            received_hash = hasher.hexdigest().lower()
+            digests = hasher.digests()
+            received_hash = digests["sha256"].lower()
+            received_sha3 = digests["sha3_256"].lower()
 
             # Step 6: Automatic verification
-            if received_hash == expected_hash:
+            sha256_match = (received_hash == expected_hash)
+            sha3_match = (expected_sha3 is None or received_sha3 == expected_sha3)
+            tamper_report = None
+
+            if sha256_match and sha3_match:
                 status = "VERIFIED"
-                msg = f"Transfer verified successfully (SHA-256 matches: {received_hash})"
+                msg = f"Dual-layer verified: SHA-256 and SHA-3-256 match perfectly."
                 logger.info(f"Transfer [{transfer_id}] {safe_filename}: VERIFIED")
             else:
                 status = "MISMATCH"
-                msg = f"Integrity MISMATCH: expected {expected_hash}, received {received_hash}"
+                msg = f"Integrity MISMATCH: expected SHA-256 {expected_hash}, got {received_hash}"
+                # Fine-Grained Tamper Localization (Section 7.1)
+                if expected_blocks:
+                    indexer = BlockPowerIndexer()
+                    tamper_report = indexer.localize_tampering(target_path, expected_blocks)
+                    msg += f" | {tamper_report.get('summary', '')}"
                 logger.error(f"Transfer [{transfer_id}] {safe_filename}: {msg}")
 
-            # Record in SQLite
+            # Record in Storage
             self.storage.update_verification(
                 transfer_id=transfer_id,
                 received_hash=received_hash,
                 status=status,
-                error_message=None if status == "VERIFIED" else msg
+                error_message=None if status == "VERIFIED" else msg,
+                received_sha3=received_sha3,
+                tamper_localization=tamper_report
             )
 
             # Step 7: Send response ack to sender
@@ -235,6 +254,8 @@ class ReceiverServer:
                 "transfer_id": transfer_id,
                 "received_hash": received_hash,
                 "expected_hash": expected_hash,
+                "received_sha3": received_sha3,
+                "tamper_localization": tamper_report,
                 "message": msg
             })
 

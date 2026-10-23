@@ -1,9 +1,11 @@
 """
 Persistence module for tracking transfers, metadata, and verification statuses.
 Supports MongoDB Atlas cloud database and local SQLite storage with automatic fallback.
+Extended to store SHA-3-256 digests, Block Power Indexes, and Tamper Localization reports.
 """
 
 from datetime import datetime, timezone
+import json
 import logging
 from pathlib import Path
 import sqlite3
@@ -42,9 +44,26 @@ class SQLiteTransferStorage:
                     status TEXT NOT NULL,
                     created_at TEXT NOT NULL,
                     verified_at TEXT,
-                    error_message TEXT
+                    error_message TEXT,
+                    sha3_256 TEXT,
+                    received_sha3 TEXT,
+                    block_index TEXT,
+                    tamper_localization TEXT
                 );
             """)
+
+            # Ensure newly added columns exist in older SQLite databases
+            for col, col_type in [
+                ("sha3_256", "TEXT"),
+                ("received_sha3", "TEXT"),
+                ("block_index", "TEXT"),
+                ("tamper_localization", "TEXT")
+            ]:
+                try:
+                    conn.execute(f"ALTER TABLE transfers ADD COLUMN {col} {col_type};")
+                except sqlite3.OperationalError:
+                    pass  # column already exists
+
             conn.execute("""
                 CREATE INDEX IF NOT EXISTS idx_transfers_filename
                 ON transfers(original_filename);
@@ -64,16 +83,24 @@ class SQLiteTransferStorage:
         stored_path: str,
         status: str = "INCOMPLETE",
         received_hash: Optional[str] = None,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        sha3_256: Optional[str] = None,
+        received_sha3: Optional[str] = None,
+        block_index: Optional[Any] = None,
+        tamper_localization: Optional[Any] = None
     ) -> None:
         """Insert or replace initial record of an incoming transfer."""
         created_at = datetime.now(timezone.utc).isoformat()
+        b_idx_str = json.dumps(block_index) if block_index is not None and not isinstance(block_index, str) else block_index
+        loc_str = json.dumps(tamper_localization) if tamper_localization is not None and not isinstance(tamper_localization, str) else tamper_localization
+
         with self._get_connection() as conn:
             conn.execute("""
                 INSERT OR REPLACE INTO transfers (
                     transfer_id, original_filename, file_size, expected_hash,
-                    received_hash, stored_path, status, created_at, error_message
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    received_hash, stored_path, status, created_at, error_message,
+                    sha3_256, received_sha3, block_index, tamper_localization
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             """, (
                 transfer_id,
                 original_filename,
@@ -83,7 +110,11 @@ class SQLiteTransferStorage:
                 str(stored_path),
                 status,
                 created_at,
-                error_message
+                error_message,
+                sha3_256,
+                received_sha3,
+                b_idx_str,
+                loc_str
             ))
             conn.commit()
 
@@ -92,21 +123,42 @@ class SQLiteTransferStorage:
         transfer_id: str,
         received_hash: Optional[str],
         status: str,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        received_sha3: Optional[str] = None,
+        tamper_localization: Optional[Any] = None
     ) -> bool:
         """Update the verification result and received hash for a transfer record."""
         verified_at = datetime.now(timezone.utc).isoformat()
+        loc_str = json.dumps(tamper_localization) if tamper_localization is not None and not isinstance(tamper_localization, str) else tamper_localization
+
         with self._get_connection() as conn:
             cursor = conn.execute("""
                 UPDATE transfers
                 SET received_hash = ?,
                     status = ?,
                     verified_at = ?,
-                    error_message = ?
+                    error_message = ?,
+                    received_sha3 = COALESCE(?, received_sha3),
+                    tamper_localization = COALESCE(?, tamper_localization)
                 WHERE transfer_id = ?;
-            """, (received_hash, status, verified_at, error_message, transfer_id))
+            """, (received_hash, status, verified_at, error_message, received_sha3, loc_str, transfer_id))
             conn.commit()
             return cursor.rowcount > 0
+
+    def _deserialize_row(self, row: sqlite3.Row) -> Dict[str, Any]:
+        """Convert SQLite row to dictionary and unpack JSON fields."""
+        d = dict(row)
+        if d.get("block_index") and isinstance(d["block_index"], str):
+            try:
+                d["block_index"] = json.loads(d["block_index"])
+            except Exception:
+                pass
+        if d.get("tamper_localization") and isinstance(d["tamper_localization"], str):
+            try:
+                d["tamper_localization"] = json.loads(d["tamper_localization"])
+            except Exception:
+                pass
+        return d
 
     def get_transfer(self, transfer_id: str) -> Optional[Dict[str, Any]]:
         """Retrieve a transfer record by its unique transfer ID."""
@@ -114,7 +166,7 @@ class SQLiteTransferStorage:
             row = conn.execute(
                 "SELECT * FROM transfers WHERE transfer_id = ?;", (transfer_id,)
             ).fetchone()
-            return dict(row) if row else None
+            return self._deserialize_row(row) if row else None
 
     def list_transfers(
         self,
@@ -134,7 +186,7 @@ class SQLiteTransferStorage:
 
         with self._get_connection() as conn:
             rows = conn.execute(query, params).fetchall()
-            return [dict(r) for r in rows]
+            return [self._deserialize_row(r) for r in rows]
 
     def get_by_filename(self, filename: str) -> List[Dict[str, Any]]:
         """Retrieve all transfers matching a specific original filename."""
@@ -143,7 +195,7 @@ class SQLiteTransferStorage:
                 "SELECT * FROM transfers WHERE original_filename = ? ORDER BY created_at DESC;",
                 (filename,)
             ).fetchall()
-            return [dict(r) for r in rows]
+            return [self._deserialize_row(r) for r in rows]
 
 
 class MongoTransferStorage:
@@ -161,9 +213,7 @@ class MongoTransferStorage:
         self.collection_name = collection_name
         self.backend_name = "mongodb"
 
-        # Initialize client with timeout
         self.client = MongoClient(self.uri, serverSelectionTimeoutMS=8000)
-        # Test connection
         self.client.admin.command("ping")
         self.db = self.client[self.db_name]
         self.collection = self.db[self.collection_name]
@@ -189,7 +239,11 @@ class MongoTransferStorage:
         stored_path: str,
         status: str = "INCOMPLETE",
         received_hash: Optional[str] = None,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        sha3_256: Optional[str] = None,
+        received_sha3: Optional[str] = None,
+        block_index: Optional[Any] = None,
+        tamper_localization: Optional[Any] = None
     ) -> None:
         """Insert or replace initial record of an incoming transfer in MongoDB."""
         created_at = datetime.now(timezone.utc).isoformat()
@@ -204,7 +258,11 @@ class MongoTransferStorage:
             "status": status,
             "created_at": created_at,
             "verified_at": None,
-            "error_message": error_message
+            "error_message": error_message,
+            "sha3_256": sha3_256,
+            "received_sha3": received_sha3,
+            "block_index": block_index,
+            "tamper_localization": tamper_localization
         }
         self.collection.replace_one({"_id": transfer_id}, doc, upsert=True)
 
@@ -213,18 +271,26 @@ class MongoTransferStorage:
         transfer_id: str,
         received_hash: Optional[str],
         status: str,
-        error_message: Optional[str] = None
+        error_message: Optional[str] = None,
+        received_sha3: Optional[str] = None,
+        tamper_localization: Optional[Any] = None
     ) -> bool:
         """Update the verification result and received hash for a transfer record."""
         verified_at = datetime.now(timezone.utc).isoformat()
+        update_fields = {
+            "received_hash": received_hash,
+            "status": status,
+            "verified_at": verified_at,
+            "error_message": error_message
+        }
+        if received_sha3 is not None:
+            update_fields["received_sha3"] = received_sha3
+        if tamper_localization is not None:
+            update_fields["tamper_localization"] = tamper_localization
+
         res = self.collection.update_one(
             {"_id": transfer_id},
-            {"$set": {
-                "received_hash": received_hash,
-                "status": status,
-                "verified_at": verified_at,
-                "error_message": error_message
-            }}
+            {"$set": update_fields}
         )
         return res.matched_count > 0
 

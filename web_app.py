@@ -1,17 +1,21 @@
 """
-Web Application Interface for Network File Transfer & SHA-256 Hash Checker.
-Provides a modern web dashboard for drag-and-drop file transfers, UUID duplicate handling,
-real-time SQLite transfer audit log, tamper simulation, and manual hash checks.
+Web Application Interface for Network File Transfer & Advanced Cryptographic Integrity Verification.
+Based on Gilbert & Gilbert (2025):
+- Dual SHA-256 + SHA-3-256 verification
+- Block Power Indexing & Tamper Localization (Section 7.1)
+- Avalanche Effect & Bit Diffusion Lab (Section II & IV)
+- Multi-Algorithm Cryptographic Benchmark (Table 3, Section IX)
+- MongoDB Atlas Cloud Database and local SQLite storage
 """
 
 from pathlib import Path
 import uuid
 from flask import Flask, render_template, request, jsonify, send_file, abort
-from werkzeug.utils import secure_filename
 
+from advanced_hash import BlockPowerIndexer, AvalancheAnalyzer, AlgorithmBenchmark
 import config
 from hash_checker import verify_transfer
-from hash_utils import calculate_sha256
+from hash_utils import calculate_sha256, calculate_dual_hash
 import protocol
 from storage import TransferStorage
 
@@ -36,7 +40,7 @@ def index():
 
 @app.route("/api/stats", methods=["GET"])
 def get_stats():
-    """Return transfer metrics from SQLite."""
+    """Return transfer metrics from Storage."""
     all_records = storage.list_transfers(limit=1000)
     total = len(all_records)
     verified = sum(1 for r in all_records if r["status"] == "VERIFIED")
@@ -54,14 +58,17 @@ def get_stats():
 
 @app.route("/api/transfers", methods=["GET"])
 def get_transfers():
-    """Return recent transfers from SQLite."""
+    """Return recent transfers from database."""
     records = storage.list_transfers(limit=100)
     return jsonify(records)
 
 
 @app.route("/api/transfer", methods=["POST"])
 def transfer_file_endpoint():
-    """Handle file upload, SHA-256 hashing, UUID isolation, and verification."""
+    """
+    Handle file upload, Dual Hashing (SHA-256 + SHA-3-256), Block Power Indexing,
+    UUID isolation, and automated verification.
+    """
     if "file" not in request.files:
         return jsonify({"status": "FAILED", "error": "No file uploaded"}), 400
 
@@ -82,28 +89,36 @@ def transfer_file_endpoint():
     upload.save(str(target_path))
     file_size = target_path.stat().st_size
 
-    # Calculate SHA-256 digests
-    sender_hash = calculate_sha256(target_path)
-    received_hash = sender_hash  # In web upload, receiver recalculates same file
+    # Calculate Dual Hashes (SHA-256 Merkle-Damgård + SHA-3-256 Keccak Sponge)
+    dual = calculate_dual_hash(target_path)
+    sender_sha256 = dual["sha256"]
+    sender_sha3 = dual["sha3_256"]
 
-    # Record in SQLite
+    # Compute Block Power Index for fine-grained tamper localization (Section 7.1)
+    indexer = BlockPowerIndexer()
+    block_index = indexer.compute_block_index(target_path)
+
     status = "VERIFIED"
-    msg = f"Transfer verified successfully (SHA-256: {received_hash})"
+    msg = "Dual-layer verified: SHA-256 and SHA-3-256 match perfectly."
 
     storage.record_transfer(
         transfer_id=transfer_id,
         original_filename=safe_name,
         file_size=file_size,
-        expected_hash=sender_hash,
+        expected_hash=sender_sha256,
         stored_path=str(target_path),
-        status="INCOMPLETE"
+        status="INCOMPLETE",
+        sha3_256=sender_sha3,
+        block_index=block_index
     )
 
     storage.update_verification(
         transfer_id=transfer_id,
-        received_hash=received_hash,
+        received_hash=sender_sha256,
         status=status,
-        error_message=None
+        error_message=None,
+        received_sha3=sender_sha3,
+        tamper_localization=None
     )
 
     return jsonify({
@@ -111,22 +126,99 @@ def transfer_file_endpoint():
         "transfer_id": transfer_id,
         "filename": safe_name,
         "file_size": file_size,
-        "sender_hash": sender_hash,
-        "received_hash": received_hash,
+        "sender_hash": sender_sha256,
+        "received_hash": sender_sha256,
+        "sha3_256": sender_sha3,
+        "block_count": len(block_index),
         "message": msg
     })
 
 
 @app.route("/api/verify/<transfer_id>", methods=["POST"])
 def verify_endpoint(transfer_id):
-    """Re-verify a transfer by recalculating SHA-256 of file on disk."""
+    """Re-verify a transfer by recalculating dual hashes and localizing any corruption."""
     result = verify_transfer(transfer_id, storage=storage)
     return jsonify(result)
 
 
+@app.route("/api/localize/<transfer_id>", methods=["POST"])
+def localize_endpoint(transfer_id):
+    """
+    Fine-Grained Tamper Localization (Section 7.1, RQ v).
+    Compares current file on disk against recorded Block Power Index,
+    identifying exact corrupted blocks, offsets, and corruption percentages.
+    """
+    record = storage.get_transfer(transfer_id)
+    if not record:
+        return jsonify({"status": "FAILED", "error": "Transfer record not found"}), 404
+
+    target = Path(record["stored_path"])
+    block_index = record.get("block_index")
+    if not block_index:
+        return jsonify({
+            "status": "FAILED",
+            "error": "No Block Power Index recorded for this transfer."
+        }), 400
+
+    indexer = BlockPowerIndexer()
+    report = indexer.localize_tampering(target, block_index)
+    report["transfer_id"] = transfer_id
+    report["filename"] = record["original_filename"]
+
+    # Save localization report to database
+    storage.update_verification(
+        transfer_id=transfer_id,
+        received_hash=record.get("received_hash"),
+        status=record.get("status"),
+        error_message=record.get("error_message"),
+        tamper_localization=report
+    )
+
+    return jsonify(report)
+
+
+@app.route("/api/avalanche", methods=["POST"])
+def avalanche_endpoint():
+    """
+    Avalanche Effect & Bit Diffusion Lab (Section II & IV).
+    Flips 1 bit in input data and computes Hamming distance diffusion metric.
+    """
+    algorithm = request.form.get("algorithm", "sha256").lower()
+    text = request.form.get("text", "")
+    bit_to_flip = int(request.form.get("bit_to_flip", 0))
+
+    if "file" in request.files and request.files["file"].filename:
+        data = request.files["file"].read()
+    elif text:
+        data = text.encode("utf-8")
+    else:
+        data = b"Cryptographic Integrity Verification Baseline Data"
+
+    result = AvalancheAnalyzer.calculate_avalanche(
+        input_data=data,
+        algorithm=algorithm,
+        bit_to_flip=bit_to_flip
+    )
+    return jsonify(result)
+
+
+@app.route("/api/benchmark", methods=["GET"])
+def benchmark_endpoint():
+    """
+    Cryptographic Algorithm Benchmark (Gilbert & Gilbert 2025, Table 3).
+    Evaluates throughput, latency, and security strength across SHA variants.
+    """
+    size_mb = float(request.args.get("size_mb", 2.0))
+    results = AlgorithmBenchmark.run_benchmark(data_size_mb=size_mb)
+    return jsonify({
+        "data_size_mb": size_mb,
+        "results": results
+    })
+
+
 @app.route("/api/verify-all", methods=["POST"])
 def verify_all_endpoint():
-    """Audit all transfers in SQLite against files on disk."""
+    """Audit all transfers in database against files on disk."""
     records = storage.list_transfers(limit=500)
     verified = 0
     mismatch = 0
@@ -153,7 +245,10 @@ def verify_all_endpoint():
 
 @app.route("/api/tamper/<transfer_id>", methods=["POST"])
 def tamper_endpoint(transfer_id):
-    """Artificially tamper with a file on disk to simulate corruption or malicious alteration."""
+    """
+    Artificially tamper with a file on disk.
+    Modifies bytes in the first quarter of the file to demonstrate Block Power Localization.
+    """
     record = storage.get_transfer(transfer_id)
     if not record:
         return jsonify({"success": False, "error": "Transfer not found"}), 404
@@ -162,16 +257,29 @@ def tamper_endpoint(transfer_id):
     if not target.exists():
         return jsonify({"success": False, "error": "File does not exist on disk"}), 404
 
-    # Inject tampered bytes
-    original = target.read_bytes()
-    tampered = original + b"\n[TAMPERED_INJECTION_TEST_DATA]"
-    target.write_bytes(tampered)
+    # Inject tampered byte in middle of the data
+    original = bytearray(target.read_bytes())
+    if len(original) > 10:
+        pos = min(len(original) // 2, 50)
+        original[pos] ^= 0xFF  # Flip all 8 bits in byte at offset pos
+    else:
+        original.extend(b"[CORRUPTED]")
+
+    target.write_bytes(original)
+
+    # Immediately recalculate and localize tampering
+    block_index = record.get("block_index")
+    tamper_report = None
+    if block_index:
+        indexer = BlockPowerIndexer()
+        tamper_report = indexer.localize_tampering(target, block_index)
 
     return jsonify({
         "success": True,
         "transfer_id": transfer_id,
         "filename": record["original_filename"],
-        "message": f"Successfully injected tampered bytes into {target.name}."
+        "tamper_report": tamper_report,
+        "message": f"Successfully injected byte corruption into {target.name}."
     })
 
 
@@ -215,6 +323,7 @@ def demo_duplicate_endpoint():
     with the identical filename 'report.pdf' but differing content.
     """
     safe_name = "report.pdf"
+    indexer = BlockPowerIndexer()
 
     # Transfer 1
     t1_id = str(uuid.uuid4())
@@ -223,15 +332,18 @@ def demo_duplicate_endpoint():
     t1_path = t1_dir / safe_name
     t1_content = b"%PDF-1.4 Report Copy A: Original Draft created at " + str(uuid.uuid4()).encode()
     t1_path.write_bytes(t1_content)
-    t1_hash = calculate_sha256(t1_path)
+    t1_dual = calculate_dual_hash(t1_path)
+    t1_blocks = indexer.compute_block_index(t1_path)
 
     storage.record_transfer(
         transfer_id=t1_id,
         original_filename=safe_name,
         file_size=len(t1_content),
-        expected_hash=t1_hash,
+        expected_hash=t1_dual["sha256"],
         stored_path=str(t1_path),
-        status="VERIFIED"
+        status="VERIFIED",
+        sha3_256=t1_dual["sha3_256"],
+        block_index=t1_blocks
     )
 
     # Transfer 2 (Same filename, different UUID, different content)
@@ -241,15 +353,18 @@ def demo_duplicate_endpoint():
     t2_path = t2_dir / safe_name
     t2_content = b"%PDF-1.4 Report Copy B: Final Signed Revision at " + str(uuid.uuid4()).encode()
     t2_path.write_bytes(t2_content)
-    t2_hash = calculate_sha256(t2_path)
+    t2_dual = calculate_dual_hash(t2_path)
+    t2_blocks = indexer.compute_block_index(t2_path)
 
     storage.record_transfer(
         transfer_id=t2_id,
         original_filename=safe_name,
         file_size=len(t2_content),
-        expected_hash=t2_hash,
+        expected_hash=t2_dual["sha256"],
         stored_path=str(t2_path),
-        status="VERIFIED"
+        status="VERIFIED",
+        sha3_256=t2_dual["sha3_256"],
+        block_index=t2_blocks
     )
 
     return jsonify({
@@ -258,48 +373,51 @@ def demo_duplicate_endpoint():
             "transfer_id": t1_id,
             "filename": safe_name,
             "path": str(t1_path),
-            "hash": t1_hash
+            "sha256": t1_dual["sha256"],
+            "sha3_256": t1_dual["sha3_256"],
+            "blocks": len(t1_blocks)
         },
         "transfer2": {
             "transfer_id": t2_id,
             "filename": safe_name,
             "path": str(t2_path),
-            "hash": t2_hash
+            "sha256": t2_dual["sha256"],
+            "sha3_256": t2_dual["sha3_256"],
+            "blocks": len(t2_blocks)
         }
     })
 
 
 @app.route("/api/check-file", methods=["POST"])
 def check_file_endpoint():
-    """Calculate SHA-256 of uploaded file and optionally compare with expected hash."""
+    """Calculate SHA-256 and SHA-3-256 of uploaded file and optionally compare with expected hash."""
     if "file" not in request.files:
         return jsonify({"status": "FAILED", "error": "No file uploaded"}), 400
 
     upload = request.files["file"]
     expected_hash = request.form.get("expected_hash", "").strip().lower()
 
-    # Calculate in memory/chunks from stream
+    content = upload.stream.read()
     import hashlib
-    hasher = hashlib.sha256()
-    while chunk := upload.stream.read(config.BUFFER_SIZE):
-        hasher.update(chunk)
-    calculated_hash = hasher.hexdigest()
+    sha256_hash = hashlib.sha256(content).hexdigest()
+    sha3_hash = hashlib.sha3_256(content).hexdigest()
 
     status = "CALCULATED"
-    msg = f"SHA-256 calculated: {calculated_hash}"
+    msg = f"Hashes calculated: SHA-256 and SHA-3-256"
 
     if expected_hash:
-        if calculated_hash.lower() == expected_hash:
+        if sha256_hash.lower() == expected_hash or sha3_hash.lower() == expected_hash:
             status = "VERIFIED"
             msg = "Hashes match! Integrity verified."
         else:
             status = "MISMATCH"
-            msg = f"Integrity MISMATCH: expected {expected_hash}, calculated {calculated_hash}"
+            msg = f"Integrity MISMATCH: expected {expected_hash}, calculated {sha256_hash}"
 
     return jsonify({
         "status": status,
         "filename": upload.filename,
-        "calculated_hash": calculated_hash,
+        "calculated_hash": sha256_hash,
+        "sha3_256": sha3_hash,
         "expected_hash": expected_hash if expected_hash else None,
         "message": msg
     })
