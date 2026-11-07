@@ -1050,7 +1050,17 @@
             method: 'POST',
             body: formData
           });
-          const result = await resp.json();
+          const text = await resp.text();
+          let result;
+          try {
+            result = JSON.parse(text);
+          } catch (jsonErr) {
+            throw new Error(`Server returned non-JSON response (${resp.status}): ${text.substring(0, 120)}...`);
+          }
+
+          if (!resp.ok || result.status === 'FAILED') {
+            throw new Error(result.error || result.message || `Upload failed with status ${resp.status}`);
+          }
 
           progressFill.style.width = `100%`;
           progressPercent.textContent = `100%`;
@@ -1058,6 +1068,9 @@
 
           showResultCard(result);
         } catch (err) {
+          progressFill.style.width = `0%`;
+          progressPercent.textContent = `0%`;
+          progressStatus.textContent = `Upload failed: ${err.message}`;
           alert('Upload failed: ' + err.message);
         }
       }

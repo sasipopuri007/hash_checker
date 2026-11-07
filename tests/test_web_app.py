@@ -160,3 +160,38 @@ def test_benchmark_endpoint(client):
     res = resp.get_json()
     assert "results" in res
     assert len(res["results"]) >= 5
+
+
+def test_api_transfer_no_file(client):
+    """POST /api/transfer without file must return 400 JSON, never HTML."""
+    resp = client.post("/api/transfer", data={})
+    assert resp.status_code == 400
+    res = resp.get_json()
+    assert res is not None
+    assert res["status"] == "FAILED"
+    assert "error" in res
+
+
+def test_api_transfer_empty_filename(client):
+    """POST /api/transfer with empty filename must return 400 JSON, never HTML."""
+    data = {"file": (io.BytesIO(b"abc"), "")}
+    resp = client.post("/api/transfer", data=data, content_type="multipart/form-data")
+    assert resp.status_code == 400
+    res = resp.get_json()
+    assert res is not None
+    assert res["status"] == "FAILED"
+    assert "error" in res
+
+
+def test_api_413_payload_too_large(client):
+    """Payload exceeding max size returns 413 JSON."""
+    from werkzeug.exceptions import RequestEntityTooLarge
+    with app.test_request_context("/api/transfer", method="POST"):
+        resp = app.handle_user_exception(RequestEntityTooLarge())
+        if isinstance(resp, tuple):
+            resp = app.make_response(resp)
+        assert resp.status_code == 413
+        res = resp.get_json()
+        assert res["status"] == "FAILED"
+        assert "exceeds maximum" in res["error"]
+

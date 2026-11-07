@@ -355,23 +355,34 @@ class TransferStorage:
     """
     Default storage interface class that forwards calls to the active storage engine
     (MongoDB Atlas or SQLite).
+    Resiliently falls back to SQLite if MongoDB encounters runtime network or SSL errors.
     """
 
     def __init__(self, backend: Optional[str] = None, **kwargs):
+        self._sqlite = SQLiteTransferStorage(**kwargs)
         self._engine = get_storage(backend=backend, **kwargs)
-        self.backend_name = self._engine.backend_name
+        self.backend_name = getattr(self._engine, "backend_name", "sqlite")
+
+    def _call(self, method_name: str, *args, **kwargs):
+        try:
+            return getattr(self._engine, method_name)(*args, **kwargs)
+        except Exception as e:
+            logger.warning(f"Error on {self.backend_name} ({e}). Seamlessly switching to local SQLite.")
+            self._engine = self._sqlite
+            self.backend_name = "sqlite"
+            return getattr(self._sqlite, method_name)(*args, **kwargs)
 
     def record_transfer(self, *args, **kwargs):
-        return self._engine.record_transfer(*args, **kwargs)
+        return self._call("record_transfer", *args, **kwargs)
 
     def update_verification(self, *args, **kwargs):
-        return self._engine.update_verification(*args, **kwargs)
+        return self._call("update_verification", *args, **kwargs)
 
     def get_transfer(self, *args, **kwargs):
-        return self._engine.get_transfer(*args, **kwargs)
+        return self._call("get_transfer", *args, **kwargs)
 
     def list_transfers(self, *args, **kwargs):
-        return self._engine.list_transfers(*args, **kwargs)
+        return self._call("list_transfers", *args, **kwargs)
 
     def get_by_filename(self, *args, **kwargs):
-        return self._engine.get_by_filename(*args, **kwargs)
+        return self._call("get_by_filename", *args, **kwargs)

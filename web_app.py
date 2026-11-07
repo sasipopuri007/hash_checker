@@ -10,7 +10,7 @@ Based on Gilbert & Gilbert (2025):
 
 from pathlib import Path
 import uuid
-from flask import Flask, render_template, request, jsonify, send_file, abort
+from flask import Flask, render_template, request, jsonify, send_file, abort, make_response
 
 from advanced_hash import BlockPowerIndexer, AvalancheAnalyzer, AlgorithmBenchmark
 import config
@@ -23,7 +23,23 @@ config.init_directories()
 
 TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR))
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024 * 1024  # 10 GB upload limit
 storage = TransferStorage()
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return make_response(jsonify({"status": "FAILED", "error": "File exceeds maximum upload size (10 GB)."}), 413)
+
+
+@app.errorhandler(500)
+def internal_server_error(error):
+    return make_response(jsonify({"status": "FAILED", "error": f"Internal server error: {str(error)}"}), 500)
+
+
+@app.errorhandler(Exception)
+def unhandled_exception(e):
+    return make_response(jsonify({"status": "FAILED", "error": f"Server error: {str(e)}"}), 500)
 
 
 @app.route("/")
@@ -69,69 +85,74 @@ def transfer_file_endpoint():
     Handle file upload, Dual Hashing (SHA-256 + SHA-3-256), Block Power Indexing,
     UUID isolation, and automated verification.
     """
-    if "file" not in request.files:
-        return jsonify({"status": "FAILED", "error": "No file uploaded"}), 400
+    try:
+        if "file" not in request.files:
+            return jsonify({"status": "FAILED", "error": "No file uploaded"}), 400
 
-    upload = request.files["file"]
-    if not upload.filename:
-        return jsonify({"status": "FAILED", "error": "Empty filename"}), 400
+        upload = request.files["file"]
+        if not upload.filename:
+            return jsonify({"status": "FAILED", "error": "Empty filename"}), 400
 
-    raw_filename = upload.filename
-    safe_name = protocol.sanitize_filename(raw_filename)
-    transfer_id = str(uuid.uuid4())
+        raw_filename = upload.filename
+        safe_name = protocol.sanitize_filename(raw_filename)
+        transfer_id = str(uuid.uuid4())
 
-    # Create dedicated UUID directory for collision-free storage
-    target_dir = config.RECEIVED_DIR / transfer_id
-    target_dir.mkdir(parents=True, exist_ok=True)
-    target_path = target_dir / safe_name
+        # Create dedicated UUID directory for collision-free storage
+        target_dir = config.RECEIVED_DIR / transfer_id
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / safe_name
 
-    # Save incoming stream
-    upload.save(str(target_path))
-    file_size = target_path.stat().st_size
+        # Save incoming stream
+        upload.save(str(target_path))
+        file_size = target_path.stat().st_size
 
-    # Calculate Dual Hashes (SHA-256 Merkle-Damgård + SHA-3-256 Keccak Sponge)
-    dual = calculate_dual_hash(target_path)
-    sender_sha256 = dual["sha256"]
-    sender_sha3 = dual["sha3_256"]
+        # Calculate Dual Hashes (SHA-256 Merkle-Damgård + SHA-3-256 Keccak Sponge)
+        dual = calculate_dual_hash(target_path)
+        sender_sha256 = dual["sha256"]
+        sender_sha3 = dual["sha3_256"]
 
-    # Compute Block Power Index for fine-grained tamper localization (Section 7.1)
-    indexer = BlockPowerIndexer()
-    block_index = indexer.compute_block_index(target_path)
+        # Compute Block Power Index for fine-grained tamper localization (Section 7.1)
+        indexer = BlockPowerIndexer()
+        block_index = indexer.compute_block_index(target_path)
 
-    status = "VERIFIED"
-    msg = "Dual-layer verified: SHA-256 and SHA-3-256 match perfectly."
+        status = "VERIFIED"
+        msg = "Dual-layer verified: SHA-256 and SHA-3-256 match perfectly."
 
-    storage.record_transfer(
-        transfer_id=transfer_id,
-        original_filename=safe_name,
-        file_size=file_size,
-        expected_hash=sender_sha256,
-        stored_path=str(target_path),
-        status="INCOMPLETE",
-        sha3_256=sender_sha3,
-        block_index=block_index
-    )
+        storage.record_transfer(
+            transfer_id=transfer_id,
+            original_filename=safe_name,
+            file_size=file_size,
+            expected_hash=sender_sha256,
+            stored_path=str(target_path),
+            status="INCOMPLETE",
+            sha3_256=sender_sha3,
+            block_index=block_index
+        )
 
-    storage.update_verification(
-        transfer_id=transfer_id,
-        received_hash=sender_sha256,
-        status=status,
-        error_message=None,
-        received_sha3=sender_sha3,
-        tamper_localization=None
-    )
+        storage.update_verification(
+            transfer_id=transfer_id,
+            received_hash=sender_sha256,
+            status=status,
+            error_message=None,
+            received_sha3=sender_sha3,
+            tamper_localization=None
+        )
 
-    return jsonify({
-        "status": status,
-        "transfer_id": transfer_id,
-        "filename": safe_name,
-        "file_size": file_size,
-        "sender_hash": sender_sha256,
-        "received_hash": sender_sha256,
-        "sha3_256": sender_sha3,
-        "block_count": len(block_index),
-        "message": msg
-    })
+        return jsonify({
+            "status": status,
+            "transfer_id": transfer_id,
+            "filename": safe_name,
+            "file_size": file_size,
+            "sender_hash": sender_sha256,
+            "received_hash": sender_sha256,
+            "sha3_256": sender_sha3,
+            "block_count": len(block_index),
+            "message": msg
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"status": "FAILED", "error": f"Transfer failed: {str(e)}"}), 500
 
 
 @app.route("/api/verify/<transfer_id>", methods=["POST"])

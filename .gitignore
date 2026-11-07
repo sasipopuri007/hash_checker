@@ -24,3 +24,5 @@ env/
 venv/
 .vscode/
 .idea/
+*.ovf
+
