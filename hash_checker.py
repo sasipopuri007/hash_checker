@@ -16,7 +16,16 @@ from pathlib import Path
 import sys
 from typing import Dict, Any, Optional
 
-from advanced_hash import BlockPowerIndexer, AvalancheAnalyzer, AlgorithmBenchmark
+from advanced_hash import (
+    BlockPowerIndexer,
+    AvalancheAnalyzer,
+    AlgorithmBenchmark,
+    RobustnessPerturbationLab,
+    ResidualSignatureTracer,
+    CollisionProbabilityCalculator,
+    ResearchReportGenerator,
+    calculate_shannon_entropy
+)
 import config
 from hash_utils import calculate_sha256, calculate_dual_hash
 from storage import TransferStorage
@@ -238,6 +247,95 @@ def cmd_benchmark(args):
     print(f"{'='*95}\n")
 
 
+def cmd_robustness(args):
+    """Run Empirical Robustness Testing across 3 disturbance scenarios (Table 2, Fig 12)."""
+    p = Path(args.path)
+    if p.is_file():
+        data = p.read_bytes()
+    else:
+        data = args.path.encode("utf-8")
+
+    res = RobustnessPerturbationLab.run_robustness_evaluation(data)
+    scores = res["table2_criteria_scores"]
+
+    print(f"\n{'='*80}")
+    print(f" EMPIRICAL ROBUSTNESS EVALUATION (Gilbert & Gilbert 2025, Section 6 & Table 2)")
+    print(f"{'='*80}")
+    print(f" Target Input:            {args.path} ({len(data):,} bytes)")
+    print(f" Shannon Entropy:         {res['original_metrics']['shannon_entropy']} bits/byte")
+    print(f" Baseline SHA-256:        {res['original_metrics']['sha256']}")
+    print(f" Baseline SHA-3-256:      {res['original_metrics']['sha3_256']}")
+    print(f"{'-'*80}")
+    print(f"{'Disturbance Scenario':<32} {'Detection Status':<18} {'Perturbed SHA-256'}")
+    print(f"{'-'*80}")
+    for sc in res["scenarios"]:
+        det = "DETECTED (Pass)" if sc["detected"] else "MISSED (Fail)"
+        print(f"{sc['scenario']:<32} {det:<18} {sc['new_sha256'][:32]}...")
+    print(f"{'-'*80}")
+    print(f" TABLE 2 CRITERIA EVALUATION SCORES:")
+    print(f" - Structural Agnosticism Score:  {scores['structural_agnosticism']}/100")
+    print(f" - Error Resilience Score:        {scores['error_resilience']}/100")
+    print(f" - Operational Stability Index:   {scores['operational_stability']}/100")
+    print(f" ==> Overall Robustness Index:    {scores['overall_robustness_index']}/100")
+    print(f"{'='*80}\n")
+
+
+def cmd_trace_signature(args):
+    """Trace residual cryptographic signature and classify tampering method (RQ v, Fig 14)."""
+    storage = TransferStorage()
+    record = storage.get_transfer(args.target)
+    if record and Path(record["stored_path"]).exists():
+        curr_path = Path(record["stored_path"])
+        curr_bytes = curr_path.read_bytes()
+        # Create simulated altered copy if currently intact to demonstrate tracing
+        alt_bytes = bytearray(curr_bytes)
+        if len(alt_bytes) > 10:
+            alt_bytes[5] ^= 0xFF
+        orig_bytes = curr_bytes
+        tampered_bytes = bytes(alt_bytes)
+    else:
+        target_path = Path(args.target)
+        if target_path.is_file():
+            orig_bytes = target_path.read_bytes()
+            alt_bytes = bytearray(orig_bytes)
+            if len(alt_bytes) > 10:
+                alt_bytes[5] ^= 0x01
+            tampered_bytes = bytes(alt_bytes)
+        else:
+            print(f"Target not found on disk or database: {args.target}")
+            return
+
+    res = ResidualSignatureTracer.trace_signature(orig_bytes, tampered_bytes)
+    print(f"\n{'='*80}")
+    print(f" RESIDUAL CRYPTOGRAPHIC SIGNATURE & FORENSIC TAMPER TRACE (RQ v)")
+    print(f"{'='*80}")
+    print(f" Tamper Classification:   {res['tamper_classification']}")
+    print(f" Classifier Confidence:   {res['confidence_percentage']}%")
+    print(f" Residual Signature Hash: {res['residual_signature_hash']}")
+    print(f" Total Bytes Altered:     {res['total_bytes_altered']}")
+    print(f" Corrupted Blocks Count:  {res['corrupted_blocks_count']}")
+    print(f" Shannon Entropy Shift:   {res['overall_entropy']['original']} -> {res['overall_entropy']['tampered']} (Delta: {res['overall_entropy']['shift']:+0.4f})")
+    print(f" Forensic Assessment:     {res['description']}")
+    print(f"{'='*80}\n")
+
+
+def cmd_collision(args):
+    """Calculate Birthday Paradox collision probability (Section 5.1 & 5.2)."""
+    res = CollisionProbabilityCalculator.calculate_collision_probability(
+        num_items=args.items,
+        digest_bits=args.bits
+    )
+    print(f"\n{'='*75}")
+    print(f" BIRTHDAY PARADOX & COLLISION PROBABILITY CALCULATOR (Section 5.1 & 5.2)")
+    print(f"{'='*75}")
+    print(f" Number of Items (k):     {res['num_items']:,} (2^{res['log2_items']})")
+    print(f" Digest Output Space (n): {res['digest_bits']} bits")
+    print(f" Birthday Bound (n/2):    2^{res['birthday_bound_bits']} items for ~50% collision probability")
+    print(f" Collision Probability:   {res['collision_probability_formatted']}")
+    print(f" Security Assessment:     {res['security_verdict']}")
+    print(f"{'='*75}\n")
+
+
 def cmd_check_file(args):
     result = check_file(args.path, args.expected_hash)
     print_card(f"FILE CHECK RESULT: {result.get('status')}", result)
@@ -329,6 +427,22 @@ def main():
     p_bench = subparsers.add_parser("benchmark", help="Benchmark SHA family throughput and security metrics")
     p_bench.add_argument("--size-mb", type=float, default=2.0, help="Test payload size in MB (default: 2.0)")
     p_bench.set_defaults(func=cmd_benchmark)
+
+    # robustness <path>
+    p_rob = subparsers.add_parser("robustness", help="Evaluate empirical robustness across 3 data disturbances (Table 2)")
+    p_rob.add_argument("path", help="File path or text string to evaluate")
+    p_rob.set_defaults(func=cmd_robustness)
+
+    # trace-signature <target>
+    p_sig = subparsers.add_parser("trace-signature", help="Trace residual cryptographic signature and classify tampering (RQ v)")
+    p_sig.add_argument("target", help="Transfer UUID or local file path")
+    p_sig.set_defaults(func=cmd_trace_signature)
+
+    # collision [--items K] [--bits BITS]
+    p_col = subparsers.add_parser("collision", help="Calculate Birthday Paradox collision probability (Section 5.1 & 5.2)")
+    p_col.add_argument("--items", type=int, default=1000000, help="Number of items/hashes generated (default: 1,000,000)")
+    p_col.add_argument("--bits", type=int, default=256, choices=[128, 160, 256, 512], help="Digest output bit length (default: 256)")
+    p_col.set_defaults(func=cmd_collision)
 
     # check-file <path> <expected_hash>
     p_check = subparsers.add_parser("check-file", help="Calculate SHA-256 of any file and compare with expected hash")

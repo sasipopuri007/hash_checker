@@ -10,7 +10,12 @@ from advanced_hash import (
     BlockPowerIndexer,
     SubstringIndexTable,
     AvalancheAnalyzer,
-    AlgorithmBenchmark
+    AlgorithmBenchmark,
+    calculate_shannon_entropy,
+    RobustnessPerturbationLab,
+    ResidualSignatureTracer,
+    CollisionProbabilityCalculator,
+    ResearchReportGenerator
 )
 from hash_utils import calculate_dual_hash
 
@@ -134,3 +139,84 @@ def test_algorithm_benchmark():
         assert r["throughput_mb_s"] > 0
         assert r["latency_ms"] >= 0
         assert "construction" in r
+
+
+def test_shannon_entropy():
+    """Verify Shannon entropy computation bounds."""
+    # Constant bytes have entropy 0.0
+    assert calculate_shannon_entropy(b"AAAAAAA") == 0.0
+    # Random/mixed bytes have higher entropy
+    mixed = bytes(range(256))
+    assert calculate_shannon_entropy(mixed) == 8.0
+
+
+def test_robustness_perturbation_lab():
+    """Verify the 3 disturbance scenarios and Table 2 criteria scores."""
+    sample = b"Secure Network File Transfer Cryptographic Robustness Test (Gilbert & Gilbert 2025)" * 50
+    eval_res = RobustnessPerturbationLab.run_robustness_evaluation(sample)
+
+    assert "table2_criteria_scores" in eval_res
+    scores = eval_res["table2_criteria_scores"]
+    assert scores["structural_agnosticism"] >= 50.0
+    assert scores["error_resilience"] == 100.0
+    assert scores["operational_stability"] >= 75.0
+    assert scores["overall_robustness_index"] >= 75.0
+
+    scenarios = eval_res["scenarios"]
+    assert len(scenarios) == 3
+    # All 3 perturbations should be successfully detected by dual hashing
+    assert all(s["detected"] for s in scenarios)
+
+
+def test_residual_signature_tracer():
+    """Verify residual signature tracing and forensic tamper classification (RQ v)."""
+    orig = b"Original baseline data for cryptographic forensic tracing" * 20
+    # Case 1: Intact
+    res_intact = ResidualSignatureTracer.trace_signature(orig, orig)
+    assert res_intact["tamper_classification"] == "INTACT_NO_TAMPERING"
+
+    # Case 2: Bit flip
+    tampered_flip = bytearray(orig)
+    tampered_flip[10] ^= 0x01
+    res_flip = ResidualSignatureTracer.trace_signature(orig, bytes(tampered_flip))
+    assert res_flip["tamper_classification"] == "RANDOM_BIT_FLIP"
+    assert len(res_flip["residual_signature_hash"]) == 64
+
+    # Case 3: Truncated
+    tampered_trunc = orig[:len(orig) // 2]
+    res_trunc = ResidualSignatureTracer.trace_signature(orig, tampered_trunc)
+    assert res_trunc["tamper_classification"] == "TRUNCATION_OR_APPEND"
+
+
+def test_collision_probability_calculator():
+    """Verify Birthday Paradox collision probability mathematics."""
+    # 2 items in 256 bits has essentially 0% collision probability
+    calc_small = CollisionProbabilityCalculator.calculate_collision_probability(2, digest_bits=256)
+    assert calc_small["collision_probability"] == 0.0
+    assert "CRYPTOGRAPHICALLY SECURE" in calc_small["security_verdict"]
+
+    # Testing an item count exceeding birthday bound for a toy 16-bit space
+    calc_toy = CollisionProbabilityCalculator.calculate_collision_probability(500, digest_bits=16)
+    assert calc_toy["collision_probability"] > 0.5
+
+    # Check attack feasibility matrix
+    matrix = CollisionProbabilityCalculator.get_attack_feasibility_matrix()
+    assert len(matrix) >= 5
+    assert any(m["algorithm"] == "MD5" and m["is_cryptographically_broken"] for m in matrix)
+    assert any(m["algorithm"] == "SHA-256" and not m["is_cryptographically_broken"] for m in matrix)
+
+
+def test_research_report_generator():
+    """Verify academic research audit report generation."""
+    rec = {
+        "transfer_id": "test-uuid-1234",
+        "original_filename": "paper.pdf",
+        "status": "VERIFIED",
+        "file_size": 1024,
+        "expected_hash": "a" * 64,
+        "received_hash": "a" * 64
+    }
+    report = ResearchReportGenerator.generate_report(rec)
+    assert report["report_metadata"]["transfer_id"] == "test-uuid-1234"
+    assert report["cryptographic_verification"]["dual_layer_verified"] is True
+

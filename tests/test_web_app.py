@@ -195,3 +195,51 @@ def test_api_413_payload_too_large(client):
         assert res["status"] == "FAILED"
         assert "exceeds maximum" in res["error"]
 
+
+def test_api_robustness_test(client):
+    """POST /api/robustness-test runs Section 6 & Table 2 evaluation."""
+    data = {"text": "Robustness testing empirical evaluation Gilbert 2025"}
+    resp = client.post("/api/robustness-test", json=data)
+    assert resp.status_code == 200
+    res = resp.get_json()
+    assert "table2_criteria_scores" in res
+    assert res["table2_criteria_scores"]["overall_robustness_index"] >= 75.0
+    assert len(res["scenarios"]) == 3
+
+
+def test_api_trace_signature(client):
+    """POST /api/trace-signature classifies tamper vector (RQ v)."""
+    resp = client.post("/api/trace-signature", json={"text": "Hello world integrity trace"})
+    assert resp.status_code == 200
+    res = resp.get_json()
+    assert res["status"] == "CLASSIFIED"
+    assert "tamper_classification" in res
+    assert "residual_signature_hash" in res
+
+
+def test_api_collision_calculator(client):
+    """GET /api/collision-calculator returns Birthday Paradox metrics."""
+    resp = client.get("/api/collision-calculator?items=1000000&bits=256")
+    assert resp.status_code == 200
+    res = resp.get_json()
+    assert "collision_analysis" in res
+    assert "attack_feasibility_matrix" in res
+    assert len(res["attack_feasibility_matrix"]) >= 5
+
+
+def test_api_report_generation(client):
+    """GET /api/report/<id> returns comprehensive research report."""
+    # First upload a file to get a valid transfer_id
+    file_content = b"Content for research audit report generation"
+    data = {"file": (io.BytesIO(file_content), "audit_target.txt")}
+    resp_up = client.post("/api/transfer", data=data, content_type="multipart/form-data")
+    tid = resp_up.get_json()["transfer_id"]
+
+    resp = client.get(f"/api/report/{tid}")
+    assert resp.status_code == 200
+    report = resp.get_json()
+    assert report["report_metadata"]["transfer_id"] == tid
+    assert report["report_metadata"]["standard"] == "Gilbert & Gilbert (IJMRAP, 2025) Research Framework"
+    assert "cryptographic_verification" in report
+
+
