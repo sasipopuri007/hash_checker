@@ -230,11 +230,96 @@
       margin-top: 0.25rem;
     }
 
+    /* Sender / Receiver Split Layout */
+    .sr-layout {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 1.5rem;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .sr-layout { grid-template-columns: 1fr; }
+      .sr-channel { display: none; }
+    }
+    .sr-panel {
+      border-radius: 14px;
+      padding: 1.5rem;
+      border: 2px solid rgba(255,255,255,0.1);
+      background: rgba(15,23,42,0.5);
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    .sr-panel.sender { border-color: rgba(59,130,246,0.4); }
+    .sr-panel.receiver { border-color: rgba(16,185,129,0.4); }
+    .sr-panel-title {
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .sr-panel-sub { font-size: 0.78rem; color: var(--text-muted); }
+    .sr-channel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding-top: 2.5rem;
+    }
+    .sr-channel-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-align: center;
+      letter-spacing: 0.05em;
+    }
+    .tcp-anim {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .tcp-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #3b82f6; opacity: 0.3;
+    }
+    .tcp-dot.active { opacity: 1; animation: tcpBounce 1s infinite; }
+    @keyframes tcpBounce {
+      0%,100% { transform: scale(1); }
+      50% { transform: scale(1.4); background: #10b981; }
+    }
+    .hash-compare-box {
+      background: rgba(0,0,0,0.3);
+      border-radius: 10px;
+      padding: 1rem;
+      font-family: var(--mono-font);
+      font-size: 0.72rem;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    .hash-label { color: var(--text-muted); font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+    .hash-val { margin-bottom: 0.5rem; }
+    .hash-val.match { color: #34d399; }
+    .hash-val.mismatch { color: #f87171; }
+    .verdict-banner {
+      border-radius: 10px;
+      padding: 0.85rem 1rem;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-align: center;
+      letter-spacing: 0.03em;
+      display: none;
+    }
+    .verdict-banner.VERIFIED { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4); color: #34d399; display: block; }
+    .verdict-banner.MISMATCH { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.4); color: #f87171; display: block; }
+
     /* Dropzone */
     .dropzone {
       border: 2px dashed rgba(255, 255, 255, 0.15);
       border-radius: 14px;
-      padding: 3rem 2rem;
+      padding: 2rem 1.5rem;
       text-align: center;
       cursor: pointer;
       transition: all 0.2s;
@@ -247,19 +332,19 @@
     }
 
     .dropzone-icon {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
+      font-size: 2rem;
+      margin-bottom: 0.75rem;
       display: inline-block;
     }
 
     .dropzone-title {
-      font-size: 1.1rem;
+      font-size: 0.95rem;
       font-weight: 600;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.4rem;
     }
 
     .dropzone-sub {
-      font-size: 0.85rem;
+      font-size: 0.78rem;
       color: var(--text-muted);
     }
 
@@ -676,57 +761,146 @@
       </button>
     </div>
 
-    <!-- TAB 1: Transfer Files -->
+    <!-- TAB 1: Transfer Files — Sender / Receiver Split Panel -->
     <section id="transfer-tab" class="tab-content active">
-      <div class="card">
-        <div class="card-header">
+
+      <!-- Quick action bar -->
+      <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:1.5rem; align-items:center;">
+        <button class="btn btn-secondary" onclick="loadSampleFile('report.pdf')">📄 Load Sample PDF (Sender)</button>
+        <button class="btn btn-secondary" onclick="loadSampleFile('notes.txt')">📝 Load Sample TXT (Sender)</button>
+        <button class="btn btn-danger" onclick="runMismatchDemo()" style="margin-left:auto;">
+          ⚡ Simulate Tamper → Show MISMATCH
+        </button>
+        <button class="btn btn-secondary" onclick="clearAll()">🗑️ Clear</button>
+      </div>
+
+      <!-- Split layout -->
+      <div class="sr-layout">
+
+        <!-- SENDER PANEL -->
+        <div class="sr-panel sender">
           <div>
-            <h2 class="card-title">Send Files with Dual-Layer Cryptographic Verification</h2>
-            <p class="card-desc">Simultaneously computes SHA-256 (Merkle–Damgård) and SHA-3-256 (Keccak Permutation Sponge), generating a Block Power Index for fine-grained tamper localization.</p>
+            <div class="sr-panel-title">📤 SENDER <span style="font-size:0.75rem;color:#60a5fa;font-weight:400;">(Client — uploads the file)</span></div>
+            <div class="sr-panel-sub">Select or drag a file. The sender computes SHA-256 + SHA-3 digests locally and transmits the file with its cryptographic fingerprint.</div>
           </div>
+
+          <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+            <div class="dropzone-icon">📁</div>
+            <div class="dropzone-title">Click to browse / drag & drop</div>
+            <div class="dropzone-sub">Any file format • Dual SHA-256 + SHA-3 computed automatically</div>
+            <input type="file" id="file-input" class="file-input" multiple onchange="handleFileSelect(event)">
+          </div>
+
+          <div class="file-preview-list" id="file-list"></div>
+
+          <div style="display:flex; gap:0.75rem; flex-wrap:wrap;">
+            <button class="btn btn-primary" id="send-btn" onclick="uploadFiles()" style="display:none;">
+              🚀 Send File to Receiver
+            </button>
+            <button class="btn btn-secondary" id="clear-btn" onclick="clearSelectedFiles()" style="display:none;">
+              Clear
+            </button>
+          </div>
+
+          <div class="progress-container" id="progress-box">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-text">
+              <span id="progress-status">Computing SHA-256 + SHA-3 digests…</span>
+              <span id="progress-percent">0%</span>
+            </div>
+          </div>
+
+          <!-- Sender hash display -->
+          <div id="sender-hash-box" style="display:none;">
+            <div class="hash-compare-box">
+              <div class="hash-label">📤 SENDER SHA-256 (Merkle–Damgård)</div>
+              <div class="hash-val" id="s-sha256">—</div>
+              <div class="hash-label">📤 SENDER SHA-3-256 (Keccak Sponge)</div>
+              <div class="hash-val" id="s-sha3" style="color:#c084fc;">—</div>
+              <div class="hash-label">File / Size</div>
+              <div class="hash-val" id="s-fileinfo" style="color:#94a3b8;">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TCP Channel -->
+        <div class="sr-channel">
+          <div class="tcp-anim" id="tcp-anim">
+            <div class="tcp-dot" id="d1"></div>
+            <div class="tcp-dot" id="d2"></div>
+            <div class="tcp-dot" id="d3"></div>
+            <div class="tcp-dot" id="d4"></div>
+            <div class="tcp-dot" id="d5"></div>
+          </div>
+          <div class="sr-channel-label" style="margin-top:0.5rem;">TCP Stream<br>64KB Blocks<br>Port 9999</div>
+        </div>
+
+        <!-- RECEIVER PANEL -->
+        <div class="sr-panel receiver">
           <div>
-            <button class="btn btn-secondary" onclick="loadSampleFile('report.pdf')">📄 Load Sample PDF</button>
-            <button class="btn btn-secondary" onclick="loadSampleFile('notes.txt')">📝 Load Sample Notes</button>
+            <div class="sr-panel-title">📥 RECEIVER <span style="font-size:0.75rem;color:#34d399;font-weight:400;">(Server — verifies integrity)</span></div>
+            <div class="sr-panel-sub">The receiver recomputes hashes on the arrived file and compares them against the sender's fingerprint byte-for-byte. Any corruption is pinpointed to the exact block.</div>
           </div>
-        </div>
 
-        <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
-          <div class="dropzone-icon">📁</div>
-          <div class="dropzone-title">Click to browse or drag & drop files here</div>
-          <div class="dropzone-sub">Supports any digital file format. Computes dual SHA-256 + SHA-3 and block-by-block indexes on the fly.</div>
-          <input type="file" id="file-input" class="file-input" multiple onchange="handleFileSelect(event)">
-        </div>
-
-        <div class="file-preview-list" id="file-list"></div>
-
-        <div class="progress-container" id="progress-box">
-          <div class="progress-bar-bg">
-            <div class="progress-bar-fill" id="progress-fill"></div>
+          <!-- Receiver status -->
+          <div id="receiver-waiting" style="text-align:center; padding:2rem 0; color:var(--text-muted); font-size:0.9rem;">
+            ⏳ Waiting for file from Sender…<br>
+            <span style="font-size:0.78rem;">Send a file using the left panel, or click <strong style="color:#f87171;">Simulate Tamper</strong> to see a MISMATCH example.</span>
           </div>
-          <div class="progress-text">
-            <span id="progress-status">Uploading & Generating Dual Cryptographic Digests...</span>
-            <span id="progress-percent">0%</span>
-          </div>
-        </div>
 
-        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
-          <button class="btn btn-primary" id="send-btn" onclick="uploadFiles()" style="display: none;">
-            🚀 Transfer File(s) Now
-          </button>
-          <button class="btn btn-secondary" id="clear-btn" onclick="clearSelectedFiles()" style="display: none;">
-            Clear Selection
-          </button>
-        </div>
+          <div id="receiver-result" style="display:none; display:flex; flex-direction:column; gap:0.85rem;">
+            <!-- Verdict Banner -->
+            <div class="verdict-banner" id="verdict-banner">—</div>
 
-        <!-- Result Box -->
-        <div class="result-card" id="result-box">
-          <div class="result-header">
-            <h3 style="font-size: 1.1rem; font-weight: 600;" id="result-title">Transfer Status</h3>
-            <span class="badge" id="result-badge">VERIFIED</span>
+            <!-- Hash comparison -->
+            <div class="hash-compare-box">
+              <div class="hash-label">📤 Sender SHA-256</div>
+              <div class="hash-val" id="r-sender-sha256">—</div>
+              <div class="hash-label">📥 Receiver SHA-256 (recomputed)</div>
+              <div class="hash-val" id="r-recv-sha256">—</div>
+              <hr style="border-color:rgba(255,255,255,0.08); margin:0.6rem 0;">
+              <div class="hash-label">📤 Sender SHA-3-256</div>
+              <div class="hash-val" id="r-sender-sha3" style="color:#c084fc;">—</div>
+              <div class="hash-label">📥 Receiver SHA-3-256 (recomputed)</div>
+              <div class="hash-val" id="r-recv-sha3" style="color:#c084fc;">—</div>
+            </div>
+
+            <!-- Transfer meta -->
+            <div style="font-size:0.8rem; color:var(--text-muted); font-family:var(--mono-font);">
+              UUID: <span id="r-uuid" style="color:#60a5fa;">—</span><br>
+              Blocks Indexed: <span id="r-blocks">—</span> &nbsp;|&nbsp; File: <span id="r-fileinfo">—</span>
+            </div>
+
+            <!-- Action buttons -->
+            <div style="display:flex; gap:0.6rem; flex-wrap:wrap;">
+              <button class="btn btn-danger btn-sm" id="btn-tamper-recv" onclick="tamperLastTransfer()">
+                🔴 Inject Tamper (Test Mismatch)
+              </button>
+              <button class="btn btn-purple btn-sm" id="btn-localize-recv" onclick="localizeLastTransfer()">
+                🎯 Localize Corrupted Block
+              </button>
+              <a class="btn btn-secondary btn-sm" id="btn-download-recv" href="#" target="_blank">
+                ⬇️ Download Received File
+              </a>
+            </div>
           </div>
-          <div class="result-details" id="result-details"></div>
         </div>
       </div>
+
+      <!-- Full-width mismatch / localization info -->
+      <div id="transfer-extra" style="margin-top:1.5rem; display:none;">
+        <div class="card" style="margin-bottom:0;">
+          <div class="card-header" style="margin-bottom:1rem;">
+            <div>
+              <h3 class="card-title" style="font-size:1rem;" id="extra-title">Block Power Localization</h3>
+            </div>
+          </div>
+          <div id="extra-content"></div>
+        </div>
+      </div>
+
     </section>
 
     <!-- TAB 2: Transfer History & Audit -->
@@ -1106,6 +1280,7 @@
   <script>
     let selectedFiles = [];
     let currentTransfers = [];
+    let lastTransferId = null;
 
     function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
@@ -1113,49 +1288,46 @@
       document.getElementById(tabId).classList.add('active');
       btn.classList.add('active');
 
-      if (tabId === 'history-tab') {
-        fetchTransfers();
-      } else if (tabId === 'localize-tab') {
-        populateLocalizeDropdown();
-      } else if (tabId === 'benchmark-tab') {
-        runBenchmark();
-      } else if (tabId === 'robustness-tab') {
-        runRobustnessEvaluation();
-      } else if (tabId === 'signature-tab') {
-        populateSignatureDropdown();
-      } else if (tabId === 'collision-tab') {
-        runCollisionCalculator();
-      }
+      if (tabId === 'history-tab') fetchTransfers();
+      else if (tabId === 'localize-tab') populateLocalizeDropdown();
+      else if (tabId === 'benchmark-tab') runBenchmark();
+      else if (tabId === 'robustness-tab') runRobustnessEvaluation();
+      else if (tabId === 'signature-tab') populateSignatureDropdown();
+      else if (tabId === 'collision-tab') runCollisionCalculator();
     }
 
-    // Drag and drop handlers
+    // ── Drag-drop
     const dropzone = document.getElementById('dropzone');
-    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
-    dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('dragover'); });
-    dropzone.addEventListener('drop', (e) => {
-      e.preventDefault();
-      dropzone.classList.remove('dragover');
-      if (e.dataTransfer.files.length > 0) {
-        addFiles(Array.from(e.dataTransfer.files));
-      }
+    dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', e => {
+      e.preventDefault(); dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) addFiles(Array.from(e.dataTransfer.files));
     });
 
     function handleFileSelect(e) {
-      if (e.target.files.length > 0) {
-        addFiles(Array.from(e.target.files));
-      }
+      if (e.target.files.length > 0) addFiles(Array.from(e.target.files));
     }
-
-    function addFiles(files) {
-      selectedFiles = selectedFiles.concat(files);
-      renderFileList();
-    }
+    function addFiles(files) { selectedFiles = selectedFiles.concat(files); renderFileList(); }
 
     function clearSelectedFiles() {
-      selectedFiles = [];
-      renderFileList();
-      document.getElementById('result-box').style.display = 'none';
+      selectedFiles = []; renderFileList();
       document.getElementById('progress-box').style.display = 'none';
+    }
+    function clearAll() {
+      clearSelectedFiles();
+      resetReceiverPanel();
+      document.getElementById('sender-hash-box').style.display = 'none';
+      document.getElementById('transfer-extra').style.display = 'none';
+    }
+    function resetReceiverPanel() {
+      document.getElementById('receiver-waiting').style.display = 'block';
+      document.getElementById('receiver-result').style.display = 'none';
+      const banner = document.getElementById('verdict-banner');
+      banner.className = 'verdict-banner'; banner.textContent = '—';
+      ['r-sender-sha256','r-recv-sha256','r-sender-sha3','r-recv-sha3','r-uuid','r-blocks','r-fileinfo']
+        .forEach(id => { const el = document.getElementById(id); if (el) el.textContent = '—'; });
+      stopTcpAnim();
     }
 
     function renderFileList() {
@@ -1163,55 +1335,53 @@
       const sendBtn = document.getElementById('send-btn');
       const clearBtn = document.getElementById('clear-btn');
       list.innerHTML = '';
-
       if (selectedFiles.length === 0) {
-        sendBtn.style.display = 'none';
-        clearBtn.style.display = 'none';
-        return;
+        sendBtn.style.display = 'none'; clearBtn.style.display = 'none'; return;
       }
-
-      sendBtn.style.display = 'inline-flex';
-      clearBtn.style.display = 'inline-flex';
-
+      sendBtn.style.display = 'inline-flex'; clearBtn.style.display = 'inline-flex';
       selectedFiles.forEach((f, idx) => {
         const item = document.createElement('div');
         item.className = 'file-preview-item';
-        item.innerHTML = `
-          <div class="file-info">
-            <span style="font-size: 1.2rem;">📄</span>
-            <div>
-              <div class="file-name">${escapeHtml(f.name)}</div>
-              <div class="file-size">${formatBytes(f.size)}</div>
-            </div>
-          </div>
-          <button class="btn btn-sm btn-danger" onclick="removeFile(${idx})">✕</button>
-        `;
+        item.innerHTML = `<div class="file-info"><span style="font-size:1.2rem;">\u{1F4C4}</span><div>
+          <div class="file-name">${escapeHtml(f.name)}</div>
+          <div class="file-size">${formatBytes(f.size)}</div></div></div>
+          <button class="btn btn-sm btn-danger" onclick="removeFile(${idx})">\u{2715}</button>`;
         list.appendChild(item);
       });
     }
-
-    function removeFile(idx) {
-      selectedFiles.splice(idx, 1);
-      renderFileList();
-    }
+    function removeFile(idx) { selectedFiles.splice(idx, 1); renderFileList(); }
 
     function formatBytes(bytes) {
       if (bytes === 0) return '0 Bytes';
-      const k = 1024;
-      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const k = 1024, sizes = ['Bytes','KB','MB','GB'];
       const i = Math.floor(Math.log(bytes) / Math.log(k));
       return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     }
-
     function escapeHtml(str) {
-      return (str || '').replace(/[&<>'"]/g, 
-        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
-      );
+      return (str || '').replace(/[&<>'"]/g,
+        tag => ({ '&':'&amp;','<':'&lt;','>':'&gt;',"'":"&#39;",'"':'&quot;' }[tag] || tag));
     }
 
+    // ── TCP animation
+    let tcpTimer = null;
+    function startTcpAnim() {
+      const dots = document.querySelectorAll('.tcp-dot');
+      let idx = 0;
+      dots.forEach(d => d.classList.remove('active'));
+      tcpTimer = setInterval(() => {
+        dots.forEach(d => d.classList.remove('active'));
+        dots[idx % dots.length].classList.add('active');
+        idx++;
+      }, 200);
+    }
+    function stopTcpAnim() {
+      clearInterval(tcpTimer);
+      document.querySelectorAll('.tcp-dot').forEach(d => d.classList.remove('active'));
+    }
+
+    // ── Core upload → both panels
     async function uploadFiles() {
       if (selectedFiles.length === 0) return;
-
       const progressBox = document.getElementById('progress-box');
       const progressFill = document.getElementById('progress-fill');
       const progressStatus = document.getElementById('progress-status');
@@ -1220,110 +1390,224 @@
 
       progressBox.style.display = 'block';
       sendBtn.disabled = true;
+      startTcpAnim();
 
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
-        progressStatus.textContent = `Computing SHA-256 + SHA-3 & Block Index for ${file.name}...`;
-        progressPercent.textContent = `50%`;
-        progressFill.style.width = `50%`;
+        progressStatus.textContent = `📤 Sender: computing SHA-256 + SHA-3 for ${file.name}…`;
+        progressPercent.textContent = '30%';
+        progressFill.style.width = '30%';
 
         const formData = new FormData();
         formData.append('file', file);
-
         try {
-          const resp = await fetch('/api/transfer', {
-            method: 'POST',
-            body: formData
-          });
+          const resp = await fetch('/api/transfer', { method: 'POST', body: formData });
           const text = await resp.text();
           let result;
-          try {
-            result = JSON.parse(text);
-          } catch (jsonErr) {
-            throw new Error(`Server returned non-JSON response (${resp.status}): ${text.substring(0, 120)}...`);
-          }
+          try { result = JSON.parse(text); }
+          catch (e) { throw new Error(`Non-JSON (${resp.status}): ${text.substring(0, 120)}`); }
+          if (!resp.ok || result.status === 'FAILED')
+            throw new Error(result.error || result.message || `Status ${resp.status}`);
 
-          if (!resp.ok || result.status === 'FAILED') {
-            throw new Error(result.error || result.message || `Upload failed with status ${resp.status}`);
-          }
+          progressFill.style.width = '70%'; progressPercent.textContent = '70%';
+          progressStatus.textContent = '📥 Receiver: re-computing & verifying…';
+          await new Promise(r => setTimeout(r, 350));
+          progressFill.style.width = '100%'; progressPercent.textContent = '100%';
+          progressStatus.textContent = '✅ Transfer complete — dual-layer integrity verified.';
 
-          progressFill.style.width = `100%`;
-          progressPercent.textContent = `100%`;
-          progressStatus.textContent = `Complete! Dual-Layer Integrity Verified.`;
-
-          showResultCard(result);
+          populateSenderPanel(result);
+          populateReceiverPanel(result, result, false);
+          lastTransferId = result.transfer_id;
         } catch (err) {
-          progressFill.style.width = `0%`;
-          progressPercent.textContent = `0%`;
-          progressStatus.textContent = `Upload failed: ${err.message}`;
-          alert('Upload failed: ' + err.message);
+          progressFill.style.width = '0%'; progressPercent.textContent = '0%';
+          progressStatus.textContent = '❌ Failed: ' + err.message;
+          stopTcpAnim(); alert('Upload failed: ' + err.message);
         }
       }
-
-      sendBtn.disabled = false;
-      fetchStats();
-      fetchTransfers();
+      stopTcpAnim(); sendBtn.disabled = false;
+      fetchStats(); fetchTransfers();
     }
 
-    function showResultCard(res) {
-      const box = document.getElementById('result-box');
-      const badge = document.getElementById('result-badge');
-      const title = document.getElementById('result-title');
-      const details = document.getElementById('result-details');
-
-      box.className = `result-card ${res.status}`;
-      box.style.display = 'block';
-
-      badge.className = `badge badge-${res.status.toLowerCase()}`;
-      badge.textContent = res.status;
-
-      title.textContent = `Transfer Result: ${res.filename} (${res.status})`;
-
-      details.innerHTML = `
-        <div class="detail-item">
-          <div class="detail-title">Transfer UUID</div>
-          <div class="detail-val">${res.transfer_id}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-title">File Size & Blocks</div>
-          <div class="detail-val">${formatBytes(res.file_size)} (${res.block_count || 1} Blocks Indexed)</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-title">SHA-256 Digest (Merkle–Damgård)</div>
-          <div class="detail-val">${res.sender_hash || 'N/A'}</div>
-        </div>
-        <div class="detail-item">
-          <div class="detail-title">SHA-3-256 Digest (Keccak Sponge)</div>
-          <div class="detail-val" style="color: #c084fc;">${res.sha3_256 || 'N/A'}</div>
-        </div>
-        <div class="detail-item" style="grid-column: 1 / -1;">
-          <div class="detail-title">Verification Outcome</div>
-          <div class="detail-val">${escapeHtml(res.message || 'No details')}</div>
-        </div>
-      `;
+    function populateSenderPanel(res) {
+      document.getElementById('sender-hash-box').style.display = 'block';
+      document.getElementById('s-sha256').textContent = res.sender_hash || res.expected_hash || 'N/A';
+      document.getElementById('s-sha3').textContent   = res.sha3_256 || 'N/A';
+      document.getElementById('s-fileinfo').textContent =
+        `${escapeHtml(res.filename || res.original_filename || '')} — ${formatBytes(res.file_size || 0)}`;
     }
 
+    function populateReceiverPanel(sRes, rRes, isMismatch) {
+      document.getElementById('receiver-waiting').style.display = 'none';
+      document.getElementById('receiver-result').style.display = 'flex';
+
+      const sSha256 = sRes.sender_hash   || sRes.expected_hash   || '';
+      const rSha256 = isMismatch ? (rRes.received_hash || rRes.tampered_sha256 || '') : sSha256;
+      const sSha3   = sRes.sha3_256 || '';
+      const rSha3   = isMismatch ? (rRes.receiver_sha3 || rRes.tampered_sha3 || sSha3) : sSha3;
+
+      const sha256Match = sSha256 === rSha256;
+      const sha3Match   = sSha3   === rSha3;
+      const verified    = sha256Match && sha3Match && !isMismatch;
+
+      const banner = document.getElementById('verdict-banner');
+      if (verified) {
+        banner.className = 'verdict-banner VERIFIED';
+        banner.textContent = '\u2705 VERIFIED — Hashes Match Perfectly (100% Intact)';
+      } else {
+        banner.className = 'verdict-banner MISMATCH';
+        banner.textContent = '\u274C MISMATCH DETECTED — File Was Corrupted / Tampered!';
+      }
+
+      function set(id, text, cls) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = text;
+        if (cls) el.className = 'hash-val ' + cls;
+      }
+      set('r-sender-sha256', sSha256 || 'N/A', 'match');
+      set('r-recv-sha256',   rSha256 || 'N/A', sha256Match && !isMismatch ? 'match' : 'mismatch');
+      set('r-sender-sha3',   sSha3   || 'N/A', 'match');
+      set('r-recv-sha3',     rSha3   || 'N/A', sha3Match && !isMismatch ? 'match' : 'mismatch');
+
+      const tid = rRes.transfer_id || sRes.transfer_id || '';
+      set('r-uuid', tid || '—');
+      set('r-blocks', (rRes.block_count || sRes.block_count || 1).toString());
+      set('r-fileinfo',
+        `${escapeHtml(rRes.filename || rRes.original_filename || '')} — ${formatBytes(rRes.file_size || sRes.file_size || 0)}`);
+
+      const dl = document.getElementById('btn-download-recv');
+      if (dl && tid) dl.href = `/api/download/${tid}`;
+    }
+
+    // ── Inject Tamper button (Receiver panel)
+    async function tamperLastTransfer() {
+      if (!lastTransferId) { alert('Send a file first, then click Inject Tamper.'); return; }
+      if (!confirm('This will corrupt one byte in the received file to demonstrate block-level mismatch detection. Proceed?')) return;
+      try {
+        const resp = await fetch(`/api/tamper/${lastTransferId}`, { method: 'POST' });
+        const res  = await resp.json();
+        if (!res.success) { alert('Tamper error: ' + (res.error || 'unknown')); return; }
+
+        // Re-verify to get the new mismatched hashes
+        const vResp = await fetch(`/api/verify/${lastTransferId}`, { method: 'POST' });
+        const vRes  = await vResp.json();
+
+        const original = currentTransfers.find(t => t.transfer_id === lastTransferId) || {};
+        populateSenderPanel({ sender_hash: original.expected_hash, sha3_256: original.sha3_256,
+          filename: original.original_filename, file_size: original.file_size });
+        populateReceiverPanel(
+          { sender_hash: original.expected_hash, sha3_256: original.sha3_256,
+            transfer_id: lastTransferId, file_size: original.file_size,
+            filename: original.original_filename, block_count: vRes.block_count },
+          { received_hash: vRes.received_hash, receiver_sha3: vRes.received_sha3,
+            transfer_id: lastTransferId, file_size: vRes.file_size,
+            filename: vRes.filename, block_count: vRes.block_count },
+          true
+        );
+        showLocalizeInTransferTab(lastTransferId, res.tamper_report);
+        fetchStats(); fetchTransfers();
+      } catch (err) { alert('Tamper error: ' + err.message); }
+    }
+
+    // ── Localize button (Receiver panel)
+    async function localizeLastTransfer() {
+      if (!lastTransferId) { alert('Send a file first.'); return; }
+      try {
+        const resp = await fetch(`/api/localize/${lastTransferId}`, { method: 'POST' });
+        const res  = await resp.json();
+        showLocalizeInTransferTab(lastTransferId, res.corrupted_blocks !== undefined ? res : null);
+      } catch (err) { alert('Localization error: ' + err.message); }
+    }
+
+    function showLocalizeInTransferTab(transferId, report) {
+      const extra   = document.getElementById('transfer-extra');
+      const title   = document.getElementById('extra-title');
+      const content = document.getElementById('extra-content');
+      extra.style.display = 'block';
+      title.textContent = 'Block Power Index — Tamper Localization';
+
+      if (!report) {
+        content.innerHTML = '<p style="color:var(--text-muted);">No corruption data. File appears intact.</p>';
+        return;
+      }
+      const total  = report.total_blocks || 1;
+      const corMap = new Map();
+      (report.corrupted_blocks || []).forEach(b => corMap.set(b.block_id, b));
+
+      content.innerHTML = `
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-bottom:1rem;font-size:0.85rem;">
+          <div>Total Blocks: <strong>${total}</strong></div>
+          <div>Intact: <strong style="color:#34d399;">${report.intact_count ?? (total - corMap.size)}</strong></div>
+          <div>Corrupted: <strong style="color:#f87171;">${report.corrupted_count ?? corMap.size}</strong></div>
+        </div>
+        <div class="block-grid" id="extra-block-grid"></div>`;
+
+      const grid = document.getElementById('extra-block-grid');
+      for (let i = 0; i < total; i++) {
+        const isC = corMap.has(i), cD = corMap.get(i);
+        const card = document.createElement('div');
+        card.className = `block-card ${isC ? 'corrupted' : 'intact'}`;
+        card.innerHTML = `
+          <div class="block-num">Block #${i}</div>
+          <div class="block-range">[${(cD ? cD.offset_start : i * 65536).toLocaleString()} – ${(cD ? cD.offset_end : (i+1)*65536).toLocaleString()} B]</div>
+          <div class="block-status">${isC ? '\u274C TAMPERED' : '\u2705 INTACT'}</div>
+          ${isC && cD && cD.reason ? `<div style="font-size:.65rem;color:#fca5a5;margin-top:.25rem;">${cD.reason}</div>` : ''}`;
+        grid.appendChild(card);
+      }
+    }
+
+    // ── Mismatch Demo (top bar button)
+    async function runMismatchDemo() {
+      try {
+        const resp = await fetch('/api/demo/mismatch', { method: 'POST' });
+        const data = await resp.json();
+        if (!data.success) { alert('Demo error: ' + (data.error || 'unknown')); return; }
+
+        document.getElementById('sender-hash-box').style.display = 'block';
+        document.getElementById('s-sha256').textContent = data.sender_sha256 || 'N/A';
+        document.getElementById('s-sha3').textContent   = data.sender_sha3   || 'N/A';
+        document.getElementById('s-fileinfo').textContent =
+          `${data.filename} — ${formatBytes(data.file_size)} [SENDER ORIGINAL]`;
+
+        startTcpAnim();
+        await new Promise(r => setTimeout(r, 800));
+        stopTcpAnim();
+
+        populateReceiverPanel(
+          { sender_hash: data.sender_sha256, sha3_256: data.sender_sha3,
+            transfer_id: data.transfer_id, file_size: data.file_size,
+            filename: data.filename, block_count: data.block_count },
+          { received_hash: data.receiver_sha256, receiver_sha3: data.receiver_sha3,
+            transfer_id: data.transfer_id, file_size: data.file_size,
+            filename: data.filename, block_count: data.block_count },
+          true
+        );
+        lastTransferId = data.transfer_id;
+        showLocalizeInTransferTab(data.transfer_id, data.tamper_report);
+        fetchStats(); fetchTransfers();
+      } catch (err) { alert('Mismatch demo error: ' + err.message); }
+    }
+
+    // ── Stats
     async function fetchStats() {
       try {
         const resp = await fetch('/api/stats');
         const data = await resp.json();
-        document.getElementById('stat-total').textContent = data.total;
+        document.getElementById('stat-total').textContent    = data.total;
         document.getElementById('stat-verified').textContent = data.verified;
         document.getElementById('stat-mismatch').textContent = data.mismatch;
-        document.getElementById('stat-failed').textContent = data.failed;
+        document.getElementById('stat-failed').textContent   = data.failed;
         if (data.backend) {
           const isMongo = data.backend.toLowerCase() === 'mongodb';
-          document.getElementById('system-status-text').textContent = isMongo ? 'MongoDB Atlas Connected (Cluster0)' : 'SQLite Local DB';
+          document.getElementById('system-status-text').textContent =
+            isMongo ? 'MongoDB Atlas Connected (Cluster0)' : 'SQLite Local DB';
           const subEl = document.getElementById('stat-total-sub');
-          if (subEl) {
-            subEl.textContent = isMongo ? 'Logged in MongoDB Atlas' : 'Logged in transfers.db';
-          }
+          if (subEl) subEl.textContent = isMongo ? 'Logged in MongoDB Atlas' : 'Logged in transfers.db';
         }
-      } catch (err) {
-        console.error('Failed to fetch stats:', err);
-      }
+      } catch (err) { console.error('fetchStats:', err); }
     }
 
+    // ── Transfer History
     async function fetchTransfers() {
       try {
         const resp = await fetch('/api/transfers');
@@ -1331,77 +1615,62 @@
         currentTransfers = list;
         const tbody = document.getElementById('transfers-tbody');
         tbody.innerHTML = '';
-
         if (list.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No transfers recorded yet.</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No transfers recorded yet.</td></tr>`;
           return;
         }
-
         list.forEach(r => {
           const tr = document.createElement('tr');
           const shortHash = (r.expected_hash || '').substring(0, 16) + '...';
           const badgeClass = `badge-${r.status.toLowerCase()}`;
           const dateStr = (r.created_at || '').substring(0, 19).replace('T', ' ');
-
           tr.innerHTML = `
             <td class="uuid-cell">${r.transfer_id}</td>
-            <td style="font-weight: 500;">${escapeHtml(r.original_filename)}</td>
-            <td style="font-family: var(--mono-font);">${formatBytes(r.file_size)}</td>
-            <td class="hash-cell" title="SHA-256: ${r.expected_hash}&#10;SHA-3: ${r.sha3_256 || 'N/A'}">${shortHash}</td>
+            <td style="font-weight:500;">${escapeHtml(r.original_filename)}</td>
+            <td style="font-family:var(--mono-font);">${formatBytes(r.file_size)}</td>
+            <td class="hash-cell" title="SHA-256: ${r.expected_hash}&#10;SHA-3: ${r.sha3_256||'N/A'}">${shortHash}</td>
             <td><span class="badge ${badgeClass}" id="badge-${r.transfer_id}">${r.status}</span></td>
-            <td style="font-size: 0.75rem; color: var(--text-muted);">${dateStr}</td>
-            <td>
-              <div class="action-group">
-                <button class="btn btn-sm btn-primary" onclick="verifySingle('${r.transfer_id}')">🔍 Verify</button>
-                <button class="btn btn-sm btn-purple" title="Inspect Block Power Index" onclick="jumpToLocalize('${r.transfer_id}')">🎯 Localize</button>
-                <button class="btn btn-sm btn-danger" title="Inject Tampered Bytes" onclick="tamperSingle('${r.transfer_id}')">⚡ Tamper</button>
-                <button class="btn btn-sm btn-secondary" title="Export Research & Forensic Report" onclick="exportReport('${r.transfer_id}')">📄 Report</button>
-                <a class="btn btn-sm btn-secondary" href="/api/download/${r.transfer_id}" target="_blank">⬇️</a>
-              </div>
-            </td>
-          `;
+            <td style="font-size:.75rem;color:var(--text-muted);">${dateStr}</td>
+            <td><div class="action-group">
+              <button class="btn btn-sm btn-primary" onclick="verifySingle('${r.transfer_id}')">🔍 Verify</button>
+              <button class="btn btn-sm btn-purple" onclick="jumpToLocalize('${r.transfer_id}')">🎯 Localize</button>
+              <button class="btn btn-sm btn-danger" onclick="tamperSingle('${r.transfer_id}')">⚡ Tamper</button>
+              <button class="btn btn-sm btn-secondary" onclick="exportReport('${r.transfer_id}')">📄 Report</button>
+              <a class="btn btn-sm btn-secondary" href="/api/download/${r.transfer_id}" target="_blank">⬇️</a>
+            </div></td>`;
           tbody.appendChild(tr);
         });
-      } catch (err) {
-        console.error('Failed to fetch transfers:', err);
-      }
+      } catch (err) { console.error('fetchTransfers:', err); }
     }
 
     async function verifySingle(transferId) {
       try {
         const resp = await fetch(`/api/verify/${transferId}`, { method: 'POST' });
-        const res = await resp.json();
+        const res  = await resp.json();
         const badge = document.getElementById(`badge-${transferId}`);
-        if (badge) {
-          badge.className = `badge badge-${res.status.toLowerCase()}`;
-          badge.textContent = res.status;
-        }
-        alert(`Verification Result for ${res.filename || transferId}:\nStatus: ${res.status}\n${res.message}`);
+        if (badge) { badge.className = `badge badge-${res.status.toLowerCase()}`; badge.textContent = res.status; }
+        alert(`Verification: ${res.filename || transferId}
+Status: ${res.status}
+${res.message}`);
         fetchStats();
-      } catch (err) {
-        alert('Verification error: ' + err.message);
-      }
+      } catch (err) { alert('Verification error: ' + err.message); }
     }
 
     async function tamperSingle(transferId) {
-      if (!confirm('This will modify the file on disk to test block-level tamper localization. Proceed?')) return;
+      if (!confirm('Modify the file on disk to test block-level tamper localization. Proceed?')) return;
       try {
         const resp = await fetch(`/api/tamper/${transferId}`, { method: 'POST' });
-        const res = await resp.json();
-        alert(res.message + '\nNow jump to "Tamper Localization" tab to inspect the exact corrupted block!');
-        fetchTransfers();
-        fetchStats();
-        jumpToLocalize(transferId);
-      } catch (err) {
-        alert('Tamper test error: ' + err.message);
-      }
+        const res  = await resp.json();
+        alert(res.message + '\nCheck "Tamper Localization" tab to inspect the exact corrupted block!');
+        fetchTransfers(); fetchStats(); jumpToLocalize(transferId);
+      } catch (err) { alert('Tamper error: ' + err.message); }
     }
 
     function jumpToLocalize(transferId) {
       const tabBtns = document.querySelectorAll('.tab-btn');
       switchTab('localize-tab', tabBtns[2]);
-      const sel = document.getElementById('localize-select');
       populateLocalizeDropdown();
+      const sel = document.getElementById('localize-select');
       sel.value = transferId;
       runLocalization();
     }
@@ -1412,192 +1681,131 @@
       currentTransfers.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.transfer_id;
-        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0, 8)}...) - ${t.status}`;
+        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0,8)}…) — ${t.status}`;
         sel.appendChild(opt);
       });
     }
 
     async function runLocalization() {
       const transferId = document.getElementById('localize-select').value;
-      if (!transferId) {
-        alert('Please select a transfer record first.');
-        return;
-      }
-
-      const grid = document.getElementById('localize-grid');
+      if (!transferId) { alert('Please select a transfer record first.'); return; }
+      const grid   = document.getElementById('localize-grid');
       const sumBox = document.getElementById('localize-summary-box');
-      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Comparing Block Power Index against disk blocks...</div>';
-
+      grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);">Comparing Block Power Index against disk blocks…</div>';
       try {
         const resp = await fetch(`/api/localize/${transferId}`, { method: 'POST' });
-        const res = await resp.json();
-
+        const res  = await resp.json();
         if (res.status === 'FAILED') {
-          grid.innerHTML = `<div style="grid-column: 1 / -1; color: #f87171; text-align: center;">${res.error}</div>`;
-          return;
+          grid.innerHTML = `<div style="grid-column:1/-1;color:#f87171;text-align:center;">${res.error}</div>`; return;
         }
-
         sumBox.style.display = 'block';
         sumBox.innerHTML = `
-          <div style="background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--card-border);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="background:rgba(0,0,0,.3);padding:1.25rem;border-radius:12px;border:1px solid var(--card-border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
               <div>
-                <h3 style="font-size: 1.1rem; font-weight: 600;">Localization Summary: ${escapeHtml(res.filename)}</h3>
-                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">${escapeHtml(res.summary)}</p>
+                <h3 style="font-size:1.1rem;font-weight:600;">Localization: ${escapeHtml(res.filename)}</h3>
+                <p style="font-size:.85rem;color:var(--text-muted);margin-top:.25rem;">${escapeHtml(res.summary)}</p>
               </div>
-              <span class="badge ${res.is_intact ? 'badge-verified' : 'badge-mismatch'}" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">
+              <span class="badge ${res.is_intact ? 'badge-verified' : 'badge-mismatch'}" style="font-size:.9rem;padding:.4rem .8rem;">
                 ${res.is_intact ? '100% INTACT' : `${res.corruption_percentage}% CORRUPTED`}
               </span>
             </div>
-            <div style="display: flex; gap: 2rem; margin-top: 1rem; font-size: 0.85rem;">
+            <div style="display:flex;gap:2rem;margin-top:1rem;font-size:.85rem;">
               <div>Total Blocks: <strong>${res.total_blocks}</strong></div>
-              <div>Intact Blocks: <strong style="color: #34d399;">${res.intact_count}</strong></div>
-              <div>Corrupted Blocks: <strong style="color: #f87171;">${res.corrupted_count}</strong></div>
-              <div>Tampered Bytes: <strong>${res.tampered_bytes} / ${res.total_bytes} bytes</strong></div>
+              <div>Intact: <strong style="color:#34d399;">${res.intact_count}</strong></div>
+              <div>Corrupted: <strong style="color:#f87171;">${res.corrupted_count}</strong></div>
+              <div>Tampered Bytes: <strong>${res.tampered_bytes} / ${res.total_bytes}</strong></div>
             </div>
-          </div>
-        `;
-
+          </div>`;
         grid.innerHTML = '';
-        const corruptedSet = new Map();
-        (res.corrupted_blocks || []).forEach(b => corruptedSet.set(b.block_id, b));
-
+        const corMap = new Map();
+        (res.corrupted_blocks || []).forEach(b => corMap.set(b.block_id, b));
         for (let i = 0; i < res.total_blocks; i++) {
-          const isCorr = corruptedSet.has(i);
-          const cData = corruptedSet.get(i);
+          const isC = corMap.has(i), cD = corMap.get(i);
           const card = document.createElement('div');
-          card.className = `block-card ${isCorr ? 'corrupted' : 'intact'}`;
-
-          const startOffset = cData ? cData.offset_start : (i * 64 * 1024);
-          const endOffset = cData ? cData.offset_end : ((i + 1) * 64 * 1024);
-
+          card.className = `block-card ${isC ? 'corrupted' : 'intact'}`;
           card.innerHTML = `
             <div class="block-num">Block #${i}</div>
-            <div class="block-range">[${startOffset.toLocaleString()} - ${endOffset.toLocaleString()} B]</div>
-            <div class="block-status">${isCorr ? '❌ TAMPERED' : '✅ INTACT'}</div>
-            ${isCorr ? `<div style="font-size: 0.65rem; color: #fca5a5; margin-top: 0.25rem;">${cData.reason}</div>` : ''}
-          `;
+            <div class="block-range">[${(cD ? cD.offset_start : i*65536).toLocaleString()} – ${(cD ? cD.offset_end : (i+1)*65536).toLocaleString()} B]</div>
+            <div class="block-status">${isC ? '\u274C TAMPERED' : '\u2705 INTACT'}</div>
+            ${isC && cD && cD.reason ? `<div style="font-size:.65rem;color:#fca5a5;margin-top:.25rem;">${cD.reason}</div>` : ''}`;
           grid.appendChild(card);
         }
-
-      } catch (err) {
-        grid.innerHTML = `<div style="grid-column: 1 / -1; color: #f87171; text-align: center;">Localization error: ${err.message}</div>`;
-      }
+      } catch (err) { grid.innerHTML = `<div style="grid-column:1/-1;color:#f87171;text-align:center;">Localization error: ${err.message}</div>`; }
     }
 
-    // Avalanche Effect Test
+    // ── Avalanche Effect
     async function runAvalancheTest() {
       const text = document.getElementById('avalanche-text').value;
       const algo = document.getElementById('avalanche-algo').value;
-      const bit = document.getElementById('avalanche-bit').value;
-      const out = document.getElementById('avalanche-output');
-
+      const bit  = document.getElementById('avalanche-bit').value;
+      const out  = document.getElementById('avalanche-output');
       const formData = new FormData();
-      formData.append('text', text);
-      formData.append('algorithm', algo);
-      formData.append('bit_to_flip', bit);
-
-      out.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Computing bitwise diffusion...</div>';
-
+      formData.append('text', text); formData.append('algorithm', algo); formData.append('bit_to_flip', bit);
+      out.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:2rem;">Computing bitwise diffusion…</div>';
       try {
         const resp = await fetch('/api/avalanche', { method: 'POST', body: formData });
-        const res = await resp.json();
-
+        const res  = await resp.json();
         out.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
-            <h4 style="font-size: 1rem; font-weight: 600;">${res.algorithm} Avalanche Metric</h4>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem;">
+            <h4 style="font-size:1rem;font-weight:600;">${res.algorithm} Avalanche Metric</h4>
             <span class="badge badge-verified">${res.verdict}</span>
           </div>
-
-          <div style="font-size: 0.85rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+          <div style="font-size:.85rem;margin-bottom:.5rem;display:flex;justify-content:space-between;">
             <span>Bit Divergence: <strong>${res.avalanche_percentage}%</strong></span>
             <span>Target: <strong>50.0%</strong></span>
           </div>
-
           <div class="avalanche-meter">
-            <div class="ideal-marker" title="Ideal 50% Diffusion Mark"></div>
-            <div class="avalanche-fill" style="width: ${res.avalanche_percentage}%;"></div>
+            <div class="ideal-marker" title="Ideal 50% mark"></div>
+            <div class="avalanche-fill" style="width:${res.avalanche_percentage}%;"></div>
           </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.8rem; margin-top: 1rem;">
-            <div class="detail-item">
-              <div class="detail-title">Output Digest Bits</div>
-              <div class="detail-val">${res.total_digest_bits} bits</div>
-            </div>
-            <div class="detail-item">
-              <div class="detail-title">Bits Flipped (1-Bit Input Change)</div>
-              <div class="detail-val" style="color: #60a5fa;">${res.flipped_bits} bits</div>
-            </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;font-size:.8rem;margin-top:1rem;">
+            <div class="detail-item"><div class="detail-title">Output Digest Bits</div><div class="detail-val">${res.total_digest_bits} bits</div></div>
+            <div class="detail-item"><div class="detail-title">Bits Flipped</div><div class="detail-val" style="color:#60a5fa;">${res.flipped_bits} bits</div></div>
           </div>
-
-          <div class="detail-item" style="margin-top: 0.75rem;">
-            <div class="detail-title">Original Hex Digest</div>
-            <div class="detail-val" style="color: #34d399;">${res.original_hex}</div>
-          </div>
-          <div class="detail-item" style="margin-top: 0.5rem;">
-            <div class="detail-title">Perturbed Hex Digest (1-bit change at bit ${res.flipped_bit_position})</div>
-            <div class="detail-val" style="color: #f87171;">${res.perturbed_hex}</div>
-          </div>
-        `;
-      } catch (err) {
-        out.innerHTML = `<div style="color: #f87171;">Avalanche test failed: ${err.message}</div>`;
-      }
+          <div class="detail-item" style="margin-top:.75rem;"><div class="detail-title">Original Hex</div><div class="detail-val" style="color:#34d399;">${res.original_hex}</div></div>
+          <div class="detail-item" style="margin-top:.5rem;"><div class="detail-title">Perturbed Hex (bit ${res.flipped_bit_position} flipped)</div><div class="detail-val" style="color:#f87171;">${res.perturbed_hex}</div></div>`;
+      } catch (err) { out.innerHTML = `<div style="color:#f87171;">Avalanche test failed: ${err.message}</div>`; }
     }
 
-    // Benchmark Run
+    // ── Benchmark
     async function runBenchmark() {
       const tbody = document.getElementById('benchmark-tbody');
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Benchmarking SHA families on local CPU...</td></tr>';
-
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">Benchmarking SHA families on CPU…</td></tr>';
       try {
         const resp = await fetch('/api/benchmark?size_mb=2.0');
         const data = await resp.json();
         tbody.innerHTML = '';
-
         data.results.forEach(r => {
           const tr = document.createElement('tr');
-          const isSafe = r.is_secure;
           tr.innerHTML = `
-            <td style="font-weight: 700; font-family: var(--mono-font);">${r.algorithm}</td>
+            <td style="font-weight:700;font-family:var(--mono-font);">${r.algorithm}</td>
             <td>${r.family}</td>
-            <td style="font-family: var(--mono-font); color: #93c5fd;">${r.construction}</td>
+            <td style="font-family:var(--mono-font);color:#93c5fd;">${r.construction}</td>
             <td>${r.digest_bits} bits</td>
-            <td style="font-family: var(--mono-font); font-weight: 600; color: #34d399;">${r.throughput_mb_s} MB/s</td>
-            <td style="font-family: var(--mono-font);">${r.latency_ms} ms</td>
-            <td>
-              <span class="badge ${isSafe ? 'badge-verified' : 'badge-mismatch'}" style="font-size: 0.7rem;">
-                ${r.security_status}
-              </span>
-            </td>
-          `;
+            <td style="font-family:var(--mono-font);font-weight:600;color:#34d399;">${r.throughput_mb_s} MB/s</td>
+            <td style="font-family:var(--mono-font);">${r.latency_ms} ms</td>
+            <td><span class="badge ${r.is_secure ? 'badge-verified' : 'badge-mismatch'}" style="font-size:.7rem;">${r.security_status}</span></td>`;
           tbody.appendChild(tr);
         });
-      } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #f87171;">Benchmark failed: ${err.message}</td></tr>`;
-      }
+      } catch (err) { tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#f87171;">Benchmark failed: ${err.message}</td></tr>`; }
     }
 
     async function auditAll() {
       try {
         const resp = await fetch('/api/verify-all', { method: 'POST' });
-        const res = await resp.json();
+        const res  = await resp.json();
         alert(`Audit Complete!\nVerified: ${res.verified}\nMismatches: ${res.mismatch}\nFailed: ${res.failed}`);
-        fetchTransfers();
-        fetchStats();
-      } catch (err) {
-        alert('Audit error: ' + err.message);
-      }
+        fetchTransfers(); fetchStats();
+      } catch (err) { alert('Audit error: ' + err.message); }
     }
 
     async function loadSampleFile(filename) {
       try {
         const resp = await fetch(`/api/sample/${filename}`);
         const blob = await resp.blob();
-        const file = new File([blob], filename, { type: blob.type });
-        addFiles([file]);
-      } catch (err) {
-        alert('Could not load sample file: ' + err.message);
-      }
+        addFiles([new File([blob], filename, { type: blob.type })]);
+      } catch (err) { alert('Could not load sample file: ' + err.message); }
     }
 
     async function simulateDuplicateTransfer() {
@@ -1606,113 +1814,79 @@
         const resp = await fetch('/api/demo/duplicate', { method: 'POST' });
         const data = await resp.json();
         alert(`Duplicate Transfer Success!\nTransfer 1 ID: ${data.transfer1.transfer_id}\nTransfer 2 ID: ${data.transfer2.transfer_id}\nBoth stored safely in distinct UUID folders!`);
-        fetchStats();
-        fetchTransfers();
+        fetchStats(); fetchTransfers();
         switchTab('history-tab', document.querySelectorAll('.tab-btn')[1]);
-      } catch (err) {
-        alert('Duplicate test failed: ' + err.message);
-      }
+      } catch (err) { alert('Duplicate test failed: ' + err.message); }
     }
 
     async function computeStandaloneHash() {
-      const fileInput = document.getElementById('calc-file-input');
-      const hashInput = document.getElementById('calc-hash-input');
-      const resultDiv = document.getElementById('calc-result');
-
-      if (!fileInput.files || fileInput.files.length === 0) {
-        alert('Please select a file first.');
-        return;
-      }
-
-      const file = fileInput.files[0];
+      const fileInput  = document.getElementById('calc-file-input');
+      const hashInput  = document.getElementById('calc-hash-input');
+      const resultDiv  = document.getElementById('calc-result');
+      if (!fileInput.files || fileInput.files.length === 0) { alert('Please select a file first.'); return; }
       const formData = new FormData();
-      formData.append('file', file);
-      if (hashInput.value.trim()) {
-        formData.append('expected_hash', hashInput.value.trim());
-      }
-
+      formData.append('file', fileInput.files[0]);
+      if (hashInput.value.trim()) formData.append('expected_hash', hashInput.value.trim());
       try {
-        const resp = await fetch('/api/check-file', {
-          method: 'POST',
-          body: formData
-        });
-        const res = await resp.json();
+        const resp = await fetch('/api/check-file', { method: 'POST', body: formData });
+        const res  = await resp.json();
         resultDiv.style.display = 'block';
-
-        const matchHtml = res.expected_hash ? 
-          `<div style="margin-top: 0.5rem;"><span class="badge badge-${res.status.toLowerCase()}">${res.status}</span> ${res.message}</div>` : '';
-
+        const matchHtml = res.expected_hash
+          ? `<div style="margin-top:.5rem;"><span class="badge badge-${res.status.toLowerCase()}">${res.status}</span> ${res.message}</div>` : '';
         resultDiv.innerHTML = `
-          <div class="detail-item" style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 10px;">
-            <div class="detail-title">Calculated SHA-256 Digest</div>
-            <div class="detail-val" style="color: #60a5fa; font-size: 0.95rem; margin-top: 0.25rem;">${res.calculated_hash}</div>
-            <div class="detail-title" style="margin-top: 0.75rem;">Calculated SHA-3-256 Digest (Sponge)</div>
-            <div class="detail-val" style="color: #c084fc; font-size: 0.95rem; margin-top: 0.25rem;">${res.sha3_256}</div>
+          <div class="detail-item" style="background:rgba(0,0,0,.4);padding:1rem;border-radius:10px;">
+            <div class="detail-title">Calculated SHA-256</div>
+            <div class="detail-val" style="color:#60a5fa;font-size:.95rem;margin-top:.25rem;">${res.calculated_hash}</div>
+            <div class="detail-title" style="margin-top:.75rem;">Calculated SHA-3-256 (Sponge)</div>
+            <div class="detail-val" style="color:#c084fc;font-size:.95rem;margin-top:.25rem;">${res.sha3_256}</div>
             ${matchHtml}
-          </div>
-        `;
-      } catch (err) {
-        alert('Hash computation failed: ' + err.message);
-      }
+          </div>`;
+      } catch (err) { alert('Hash computation failed: ' + err.message); }
     }
 
-    // Robustness Perturbation Lab (Table 2 & Figure 12)
+    // ── Robustness
     async function runRobustnessEvaluation() {
-      const text = document.getElementById('robustness-text-input').value;
+      const text   = document.getElementById('robustness-text-input').value;
       const resDiv = document.getElementById('robustness-result');
-      const scDiv = document.getElementById('robustness-scenarios');
-
+      const scDiv  = document.getElementById('robustness-scenarios');
       try {
         const resp = await fetch('/api/robustness-test', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: text })
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
         });
         const res = await resp.json();
         resDiv.style.display = 'block';
-
-        const scores = res.table2_criteria_scores;
-        document.getElementById('score-agnosticism').textContent = `${scores.structural_agnosticism}/100`;
-        document.getElementById('score-resilience').textContent = `${scores.error_resilience}/100`;
-        document.getElementById('score-stability').textContent = `${scores.operational_stability}/100`;
-        document.getElementById('score-overall').textContent = `${scores.overall_robustness_index}/100`;
-
+        const sc = res.table2_criteria_scores;
+        document.getElementById('score-agnosticism').textContent = `${sc.structural_agnosticism}/100`;
+        document.getElementById('score-resilience').textContent  = `${sc.error_resilience}/100`;
+        document.getElementById('score-stability').textContent   = `${sc.operational_stability}/100`;
+        document.getElementById('score-overall').textContent     = `${sc.overall_robustness_index}/100`;
         scDiv.innerHTML = '';
         res.scenarios.forEach(sc => {
           const card = document.createElement('div');
-          card.style.background = 'rgba(15, 23, 42, 0.6)';
-          card.style.border = '1px solid var(--card-border)';
-          card.style.borderRadius = '10px';
-          card.style.padding = '1.25rem';
-
+          card.style.cssText = 'background:rgba(15,23,42,.6);border:1px solid var(--card-border);border-radius:10px;padding:1.25rem;';
           card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-              <h4 style="font-size: 0.95rem; font-weight: 600;">${sc.scenario}</h4>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;">
+              <h4 style="font-size:.95rem;font-weight:600;">${sc.scenario}</h4>
               <span class="badge ${sc.detected ? 'badge-verified' : 'badge-mismatch'}">${sc.detected ? 'DETECTED' : 'MISSED'}</span>
             </div>
-            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-              Perturbed SHA-256 Digest:
-              <div style="font-family: var(--mono-font); color: #93c5fd; font-size: 0.75rem; word-break: break-all; margin-top: 0.25rem;">${sc.new_sha256}</div>
+            <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:.5rem;">
+              Perturbed SHA-256:<div style="font-family:var(--mono-font);color:#93c5fd;font-size:.75rem;word-break:break-all;margin-top:.25rem;">${sc.new_sha256}</div>
             </div>
-            <div style="font-size: 0.75rem; color: #a78bfa;">
-              ${sc.meta.description || `Injected noise at ${sc.meta.modified_bytes_count || 1} byte position(s)`}
-            </div>
-          `;
+            <div style="font-size:.75rem;color:#a78bfa;">${sc.meta.description || `Injected noise at ${sc.meta.modified_bytes_count||1} byte(s)`}</div>`;
           scDiv.appendChild(card);
         });
-      } catch (err) {
-        alert('Robustness test error: ' + err.message);
-      }
+      } catch (err) { alert('Robustness test error: ' + err.message); }
     }
 
-    // Forensic Residual Signature (RQ v)
+    // ── Forensic Residual Signature
     function populateSignatureDropdown() {
       const sel = document.getElementById('signature-transfer-select');
       sel.innerHTML = '<option value="">Select a transfer record...</option>';
       currentTransfers.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.transfer_id;
-        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0, 8)}...) - ${t.status}`;
+        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0,8)}…) — ${t.status}`;
         sel.appendChild(opt);
       });
     }
@@ -1720,92 +1894,65 @@
     async function traceResidualSignature() {
       const sel = document.getElementById('signature-transfer-select');
       const transferId = sel.value;
-      if (!transferId) {
-        alert('Please select a transfer record from the dropdown.');
-        return;
-      }
-
+      if (!transferId) { alert('Please select a transfer record from the dropdown.'); return; }
       try {
         const resp = await fetch('/api/trace-signature', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ transfer_id: transferId })
         });
         const res = await resp.json();
-        if (res.status === 'FAILED') {
-          alert('Trace error: ' + res.error);
-          return;
-        }
-
+        if (res.status === 'FAILED') { alert('Trace error: ' + res.error); return; }
         document.getElementById('signature-result').style.display = 'block';
-        document.getElementById('sig-class').textContent = res.tamper_classification;
-        document.getElementById('sig-conf').textContent = `Confidence: ${res.confidence_percentage}%`;
-        document.getElementById('sig-bytes').textContent = `${res.total_bytes_altered} byte(s)`;
-        document.getElementById('sig-blocks').textContent = `${res.corrupted_blocks_count} block(s) altered`;
-        document.getElementById('sig-entropy').textContent = `${res.overall_entropy.shift >= 0 ? '+' : ''}${res.overall_entropy.shift.toFixed(4)}`;
-        document.getElementById('sig-entropy-sub').textContent = `Orig: ${res.overall_entropy.original} -> Tamp: ${res.overall_entropy.tampered}`;
-        document.getElementById('sig-desc').textContent = res.description;
-        document.getElementById('sig-hash').textContent = res.residual_signature_hash;
-      } catch (err) {
-        alert('Forensic trace failed: ' + err.message);
-      }
+        document.getElementById('sig-class').textContent    = res.tamper_classification;
+        document.getElementById('sig-conf').textContent     = `Confidence: ${res.confidence_percentage}%`;
+        document.getElementById('sig-bytes').textContent    = `${res.total_bytes_altered} byte(s)`;
+        document.getElementById('sig-blocks').textContent   = `${res.corrupted_blocks_count} block(s) altered`;
+        document.getElementById('sig-entropy').textContent  = `${res.overall_entropy.shift >= 0 ? '+' : ''}${res.overall_entropy.shift.toFixed(4)}`;
+        document.getElementById('sig-entropy-sub').textContent = `Orig: ${res.overall_entropy.original} → Tamp: ${res.overall_entropy.tampered}`;
+        document.getElementById('sig-desc').textContent     = res.description;
+        document.getElementById('sig-hash').textContent     = res.residual_signature_hash;
+      } catch (err) { alert('Forensic trace failed: ' + err.message); }
     }
 
-    // Birthday Attack & Collision Calculator
+    // ── Collision Calculator
     async function runCollisionCalculator() {
-      const bits = document.getElementById('collision-algo-select').value;
+      const bits  = document.getElementById('collision-algo-select').value;
       const items = document.getElementById('collision-items-input').value;
-
       try {
         const resp = await fetch(`/api/collision-calculator?items=${items}&bits=${bits}`);
         const data = await resp.json();
         const c = data.collision_analysis;
-
-        document.getElementById('col-prob-val').textContent = c.collision_probability_formatted;
-        document.getElementById('col-bound-val').textContent = `2^${c.birthday_bound_bits} items`;
+        document.getElementById('col-prob-val').textContent   = c.collision_probability_formatted;
+        document.getElementById('col-bound-val').textContent  = `2^${c.birthday_bound_bits} items`;
         document.getElementById('col-verdict-val').textContent = c.security_verdict;
-
         const tbody = document.getElementById('attack-matrix-tbody');
         tbody.innerHTML = '';
         data.attack_feasibility_matrix.forEach(m => {
           const tr = document.createElement('tr');
           tr.innerHTML = `
-            <td style="font-weight: 700; font-family: var(--mono-font);">${m.algorithm}</td>
+            <td style="font-weight:700;font-family:var(--mono-font);">${m.algorithm}</td>
             <td>${m.digest_bits} bits</td>
-            <td style="font-family: var(--mono-font); color: #93c5fd;">${m.collision_resistance_work}</td>
-            <td style="font-family: var(--mono-font);">${m.preimage_resistance_work}</td>
-            <td>
-              <span class="badge ${m.is_cryptographically_broken ? 'badge-mismatch' : 'badge-verified'}">
-                ${m.is_cryptographically_broken ? 'BROKEN / DEPRECATED' : 'SECURE'}
-              </span>
-            </td>
-            <td style="font-size: 0.8rem; color: var(--text-muted);">${m.attack_history}</td>
-          `;
+            <td style="font-family:var(--mono-font);color:#93c5fd;">${m.collision_resistance_work}</td>
+            <td style="font-family:var(--mono-font);">${m.preimage_resistance_work}</td>
+            <td><span class="badge ${m.is_cryptographically_broken ? 'badge-mismatch' : 'badge-verified'}">${m.is_cryptographically_broken ? 'BROKEN' : 'SECURE'}</span></td>
+            <td style="font-size:.8rem;color:var(--text-muted);">${m.attack_history}</td>`;
           tbody.appendChild(tr);
         });
-      } catch (err) {
-        console.error('Collision calculator error:', err);
-      }
+      } catch (err) { console.error('Collision calculator error:', err); }
     }
 
-    // Export Academic Report
+    // ── Export Report
     async function exportReport(transferId) {
       try {
         const resp = await fetch(`/api/report/${transferId}`);
         const report = await resp.json();
-        const jsonStr = JSON.stringify(report, null, 2);
-        const blob = new Blob([jsonStr], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `integrity_audit_report_${transferId.substring(0, 8)}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (err) {
-        alert('Could not export audit report: ' + err.message);
-      }
+        const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = `integrity_audit_${transferId.substring(0,8)}.json`;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a); URL.revokeObjectURL(url);
+      } catch (err) { alert('Could not export report: ' + err.message); }
     }
 
     // Initial load

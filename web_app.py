@@ -180,6 +180,16 @@ def transfer_file_endpoint():
 def verify_endpoint(transfer_id):
     """Re-verify a transfer by recalculating dual hashes and localizing any corruption."""
     result = verify_transfer(transfer_id, storage=storage)
+    # Alias fields so the receiver panel can compare sender vs receiver hashes
+    result["received_hash"] = result.get("calculated_hash")
+    result["received_sha3"] = result.get("calculated_sha3")
+    try:
+        rec = storage.get_transfer(transfer_id)
+        if rec:
+            result.setdefault("file_size", rec.get("file_size", 0))
+            result.setdefault("block_count", len(rec.get("block_index") or []))
+    except Exception:
+        pass
     return jsonify(result)
 
 
@@ -547,6 +557,92 @@ def collision_calculator_endpoint():
     return jsonify({
         "collision_analysis": prob_data,
         "attack_feasibility_matrix": attack_matrix
+    })
+
+
+@app.route("/api/demo/mismatch", methods=["POST"])
+def demo_mismatch_endpoint():
+    """
+    Demonstrate a Sender vs Receiver hash mismatch entirely within the web UI.
+    Creates a 'sender' file, saves it as 'received', then corrupts the received copy.
+    Returns both sender hashes and receiver hashes (which will differ) along with
+    a Block Power localization report.
+    """
+    import hashlib
+    indexer = BlockPowerIndexer()
+    safe_name = "demo_mismatch.txt"
+
+    # 1) Create SENDER content and compute sender hashes
+    sender_content = (
+        b"Hash Checker Demo: Sender File\n"
+        b"This is the ORIGINAL file sent by the sender.\n"
+        b"SHA-256 and SHA-3 are computed on this exact content.\n"
+        b"If even one byte is changed, both hashes will completely differ.\n"
+        b"Gilbert & Gilbert (2025): Dual-layer cryptographic integrity verification.\n"
+    ) * 8  # make it big enough for block demo
+
+    import hashlib
+    sender_sha256 = hashlib.sha256(sender_content).hexdigest()
+    sender_sha3   = hashlib.sha3_256(sender_content).hexdigest()
+
+    # 2) Save sender content to received dir (simulating a received file)
+    transfer_id = str(uuid.uuid4())
+    target_dir  = config.RECEIVED_DIR / transfer_id
+    target_dir.mkdir(parents=True, exist_ok=True)
+    target_path = target_dir / safe_name
+
+    target_path.write_bytes(sender_content)
+    block_index = indexer.compute_block_index(target_path)
+
+    # Store original (clean) transfer record
+    storage.record_transfer(
+        transfer_id=transfer_id,
+        original_filename=safe_name,
+        file_size=len(sender_content),
+        expected_hash=sender_sha256,
+        stored_path=str(target_path),
+        status="VERIFIED",
+        sha3_256=sender_sha3,
+        block_index=block_index
+    )
+
+    # 3) Tamper the received file (simulate in-transit corruption)
+    received = bytearray(sender_content)
+    tamper_positions = [50, 51, 52, 100, 101]  # multiple bytes in block 0
+    for pos in tamper_positions:
+        if pos < len(received):
+            received[pos] ^= 0xFF
+
+    target_path.write_bytes(bytes(received))
+
+    # 4) Compute receiver hashes (now different from sender)
+    receiver_sha256 = hashlib.sha256(bytes(received)).hexdigest()
+    receiver_sha3   = hashlib.sha3_256(bytes(received)).hexdigest()
+
+    # 5) Localize tampering
+    tamper_report = indexer.localize_tampering(target_path, block_index)
+
+    # Update DB to show MISMATCH
+    storage.update_verification(
+        transfer_id=transfer_id,
+        received_hash=receiver_sha256,
+        status="MISMATCH",
+        error_message="Demo: simulated in-transit corruption",
+        tamper_localization=tamper_report
+    )
+
+    return jsonify({
+        "success": True,
+        "transfer_id": transfer_id,
+        "filename": safe_name,
+        "file_size": len(sender_content),
+        "block_count": len(block_index),
+        "sender_sha256": sender_sha256,
+        "sender_sha3": sender_sha3,
+        "receiver_sha256": receiver_sha256,
+        "receiver_sha3": receiver_sha3,
+        "tamper_report": tamper_report,
+        "message": "Mismatch demo: sender hashes != receiver hashes due to in-transit byte corruption."
     })
 
 
