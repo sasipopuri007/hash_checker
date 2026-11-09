@@ -30,7 +30,19 @@ from storage import TransferStorage
 
 config.init_directories()
 
-TEMPLATES_DIR = Path(__file__).resolve().parent / "templates"
+def find_templates_dir():
+    candidates = [
+        Path(__file__).resolve().parent / "templates",
+        Path(__file__).resolve().parent / "api" / "templates",
+        Path.cwd() / "templates",
+        Path.cwd() / "api" / "templates",
+    ]
+    for c in candidates:
+        if (c / "index.html").exists():
+            return c
+    return candidates[0]
+
+TEMPLATES_DIR = find_templates_dir()
 app = Flask(__name__, template_folder=str(TEMPLATES_DIR))
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024 * 1024  # 10 GB upload limit
 storage = TransferStorage()
@@ -335,15 +347,17 @@ def download_endpoint(transfer_id):
 def get_sample_file(filename):
     """Retrieve sample test files."""
     safe_name = protocol.sanitize_filename(filename)
-    sample_path = config.SENDER_FILES_DIR / safe_name
-    if not sample_path.exists():
-        abort(404, description="Sample file not found")
-
-    return send_file(
-        str(sample_path),
-        as_attachment=True,
-        download_name=safe_name
-    )
+    candidates = [
+        config.SENDER_FILES_DIR / safe_name,
+        Path(__file__).resolve().parent / "sender_files" / safe_name,
+        Path(__file__).resolve().parent / "api" / "sender_files" / safe_name,
+        Path.cwd() / "sender_files" / safe_name,
+        Path.cwd() / "api" / "sender_files" / safe_name,
+    ]
+    for p in candidates:
+        if p.exists():
+            return send_file(str(p), as_attachment=True, download_name=safe_name)
+    abort(404, description="Sample file not found")
 
 
 @app.route("/api/demo/duplicate", methods=["POST"])

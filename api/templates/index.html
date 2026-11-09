@@ -1,0 +1,1816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Advanced Cryptographic Integrity Verification & Hash Checker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(22, 30, 49, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --card-hover: rgba(30, 41, 67, 0.85);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.15);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.15);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.15);
+      --mono-font: 'JetBrains Mono', monospace;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at 10% 20%, #111827 0%, #0b0f19 90%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      padding: 1rem 2rem;
+    }
+
+    .header-content {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+    }
+
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .brand-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.45rem 1rem;
+      border-radius: 9999px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: rgba(16, 185, 129, 0.12);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 8px #10b981;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      width: 100%;
+      flex: 1;
+    }
+
+    /* Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.25rem;
+      margin-bottom: 2rem;
+    }
+
+    .stat-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 1.25rem;
+      backdrop-filter: blur(10px);
+      transition: transform 0.2s, border-color 0.2s;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .stat-label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.35rem;
+    }
+
+    .stat-value {
+      font-size: 1.85rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .stat-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 0.3rem;
+    }
+
+    /* Navigation Tabs */
+    .nav-tabs {
+      display: flex;
+      gap: 0.5rem;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 2rem;
+      overflow-x: auto;
+      white-space: nowrap;
+      padding-bottom: 2px;
+    }
+
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 0.75rem 1.15rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .tab-btn:hover { color: var(--text-main); }
+    .tab-btn.active {
+      color: #60a5fa;
+      border-bottom-color: #3b82f6;
+      font-weight: 600;
+    }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 2rem;
+      backdrop-filter: blur(12px);
+      margin-bottom: 2rem;
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .card-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 0.25rem;
+    }
+
+    /* Dropzone */
+    .dropzone {
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 14px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .dropzone:hover, .dropzone.dragover {
+      border-color: #3b82f6;
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .dropzone-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+
+    .dropzone-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+
+    .dropzone-sub {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+    }
+
+    .file-input { display: none; }
+
+    .file-preview-list {
+      margin-top: 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .file-preview-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1rem;
+      background: rgba(30, 41, 59, 0.6);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+    }
+
+    .file-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      overflow: hidden;
+    }
+
+    .file-name {
+      font-weight: 500;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 350px;
+    }
+
+    .file-size {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: var(--mono-font);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.14);
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    .btn-purple {
+      background: rgba(139, 92, 246, 0.2);
+      color: #c084fc;
+      border: 1px solid rgba(139, 92, 246, 0.3);
+    }
+
+    .btn-purple:hover {
+      background: rgba(139, 92, 246, 0.35);
+    }
+
+    .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.75rem;
+      border-radius: 7px;
+    }
+
+    /* Progress Bar */
+    .progress-container {
+      margin-top: 1.5rem;
+      display: none;
+    }
+
+    .progress-bar-bg {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 9999px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      width: 0%;
+      transition: width 0.3s;
+    }
+
+    .progress-text {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--mono-font);
+    }
+
+    /* Result Card */
+    .result-card {
+      margin-top: 1.5rem;
+      padding: 1.25rem;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      display: none;
+    }
+
+    .result-card.VERIFIED {
+      background: var(--success-bg);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .result-card.MISMATCH {
+      background: var(--danger-bg);
+      border-color: rgba(239, 68, 68, 0.3);
+      color: #f87171;
+    }
+
+    .result-card.FAILED {
+      background: var(--warning-bg);
+      border-color: rgba(245, 158, 11, 0.3);
+      color: #fbbf24;
+    }
+
+    .badge {
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      font-family: var(--mono-font);
+    }
+
+    .badge-verified { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .badge-mismatch { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+    .badge-failed { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .badge-incomplete { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; border: 1px solid rgba(148, 163, 184, 0.3); }
+
+    .result-details {
+      font-size: 0.85rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 0.75rem;
+      color: var(--text-main);
+    }
+
+    .detail-item {
+      background: rgba(0, 0, 0, 0.25);
+      padding: 0.75rem 0.9rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .detail-title {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.25rem;
+    }
+
+    .detail-val {
+      font-family: var(--mono-font);
+      font-size: 0.8rem;
+      word-break: break-all;
+    }
+
+    /* Table */
+    .table-responsive { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th {
+      padding: 0.85rem 1rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--card-border);
+      font-weight: 600;
+    }
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+      vertical-align: middle;
+    }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .hash-cell {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      color: #93c5fd;
+    }
+
+    .uuid-cell {
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .action-group {
+      display: flex;
+      gap: 0.35rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Block Power Indexing Heatmap Grid */
+    .block-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+
+    .block-card {
+      border-radius: 10px;
+      padding: 0.85rem;
+      font-family: var(--mono-font);
+      font-size: 0.75rem;
+      border: 1px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .block-card.intact {
+      background: rgba(16, 185, 129, 0.08);
+      border-color: rgba(16, 185, 129, 0.3);
+      color: #34d399;
+    }
+
+    .block-card.corrupted {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: #ef4444;
+      color: #f87171;
+      animation: pulse-border 1.5s infinite;
+    }
+
+    @keyframes pulse-border {
+      0%, 100% { box-shadow: 0 0 0 rgba(239, 68, 68, 0); }
+      50% { box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+    }
+
+    .block-num { font-weight: 700; font-size: 0.85rem; margin-bottom: 0.25rem; }
+    .block-range { color: var(--text-muted); font-size: 0.7rem; }
+    .block-status { font-weight: 600; margin-top: 0.35rem; }
+
+    /* Avalanche Meter */
+    .avalanche-meter {
+      height: 24px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      position: relative;
+      overflow: hidden;
+      margin: 1rem 0;
+    }
+
+    .avalanche-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981, #f59e0b);
+      transition: width 0.5s ease-out;
+    }
+
+    .ideal-marker {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #ffffff;
+      box-shadow: 0 0 6px white;
+      z-index: 2;
+    }
+
+    .diagram-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      font-family: var(--mono-font);
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: #94a3b8;
+    }
+
+    .diagram-box .accent { color: #60a5fa; }
+    .diagram-box .folder { color: #f59e0b; }
+    .diagram-box .file { color: #34d399; }
+
+    footer {
+      border-top: 1px solid var(--card-border);
+      padding: 1.5rem 2rem;
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="header-content">
+      <div class="brand">
+        <div class="logo-icon">#</div>
+        <div>
+          <div class="brand-title">Advanced Cryptographic Integrity Verification & Hash Checker</div>
+          <div class="brand-sub">Based on Gilbert & Gilbert (2025) • Dual SHA-256 + SHA-3 • Block Power Indexing • MongoDB Atlas</div>
+        </div>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        <span id="system-status-text">Connecting to Storage Engine...</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Real-time Stats Grid -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Total Transfers</div>
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-sub" id="stat-total-sub">Logged in MongoDB Atlas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Verified Transfers</div>
+        <div class="stat-value" style="color: #34d399;" id="stat-verified">0</div>
+        <div class="stat-sub">Dual-Layer SHA-256 + SHA-3</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Integrity Mismatches</div>
+        <div class="stat-value" style="color: #f87171;" id="stat-mismatch">0</div>
+        <div class="stat-sub">Localized via Block Indexing</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Failed / Incomplete</div>
+        <div class="stat-value" style="color: #fbbf24;" id="stat-failed">0</div>
+        <div class="stat-sub">Interrupted TCP Reads</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('transfer-tab', this)">
+        <span>📤</span> Transfer Files (Sender)
+      </button>
+      <button class="tab-btn" onclick="switchTab('history-tab', this)">
+        <span>📋</span> Transfer History & Audit
+      </button>
+      <button class="tab-btn" onclick="switchTab('localize-tab', this)">
+        <span>🎯</span> Tamper Localization (Block Power Index)
+      </button>
+      <button class="tab-btn" onclick="switchTab('avalanche-tab', this)">
+        <span>⚡</span> Avalanche Effect Lab
+      </button>
+      <button class="tab-btn" onclick="switchTab('benchmark-tab', this)">
+        <span>📊</span> Algorithm Benchmark (Table 3)
+      </button>
+      <button class="tab-btn" onclick="switchTab('duplicate-tab', this)">
+        <span>🗂️</span> Duplicate Filename Strategy
+      </button>
+      <button class="tab-btn" onclick="switchTab('robustness-tab', this)">
+        <span>🧪</span> Robustness Lab (Table 2)
+      </button>
+      <button class="tab-btn" onclick="switchTab('signature-tab', this)">
+        <span>🔬</span> Forensic Residual Signature (RQ v)
+      </button>
+      <button class="tab-btn" onclick="switchTab('collision-tab', this)">
+        <span>🎲</span> Collision & Birthday Attack
+      </button>
+      <button class="tab-btn" onclick="switchTab('calc-tab', this)">
+        <span>🔍</span> Standalone Hash Checker
+      </button>
+    </div>
+
+    <!-- TAB 1: Transfer Files -->
+    <section id="transfer-tab" class="tab-content active">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Send Files with Dual-Layer Cryptographic Verification</h2>
+            <p class="card-desc">Simultaneously computes SHA-256 (Merkle–Damgård) and SHA-3-256 (Keccak Permutation Sponge), generating a Block Power Index for fine-grained tamper localization.</p>
+          </div>
+          <div>
+            <button class="btn btn-secondary" onclick="loadSampleFile('report.pdf')">📄 Load Sample PDF</button>
+            <button class="btn btn-secondary" onclick="loadSampleFile('notes.txt')">📝 Load Sample Notes</button>
+          </div>
+        </div>
+
+        <div class="dropzone" id="dropzone" onclick="document.getElementById('file-input').click()">
+          <div class="dropzone-icon">📁</div>
+          <div class="dropzone-title">Click to browse or drag & drop files here</div>
+          <div class="dropzone-sub">Supports any digital file format. Computes dual SHA-256 + SHA-3 and block-by-block indexes on the fly.</div>
+          <input type="file" id="file-input" class="file-input" multiple onchange="handleFileSelect(event)">
+        </div>
+
+        <div class="file-preview-list" id="file-list"></div>
+
+        <div class="progress-container" id="progress-box">
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" id="progress-fill"></div>
+          </div>
+          <div class="progress-text">
+            <span id="progress-status">Uploading & Generating Dual Cryptographic Digests...</span>
+            <span id="progress-percent">0%</span>
+          </div>
+        </div>
+
+        <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
+          <button class="btn btn-primary" id="send-btn" onclick="uploadFiles()" style="display: none;">
+            🚀 Transfer File(s) Now
+          </button>
+          <button class="btn btn-secondary" id="clear-btn" onclick="clearSelectedFiles()" style="display: none;">
+            Clear Selection
+          </button>
+        </div>
+
+        <!-- Result Box -->
+        <div class="result-card" id="result-box">
+          <div class="result-header">
+            <h3 style="font-size: 1.1rem; font-weight: 600;" id="result-title">Transfer Status</h3>
+            <span class="badge" id="result-badge">VERIFIED</span>
+          </div>
+          <div class="result-details" id="result-details"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Transfer History & Audit -->
+    <section id="history-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Transfer History & Cloud Audit Trail</h2>
+            <p class="card-desc">Stored in MongoDB Atlas with dual digests (SHA-256 & SHA-3), Block Power Indexes, and one-click block tamper localization.</p>
+          </div>
+          <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+            <button class="btn btn-secondary" onclick="fetchTransfers()">🔄 Refresh</button>
+            <button class="btn btn-primary" onclick="auditAll()">🛡️ Audit All Files on Disk</button>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Transfer UUID</th>
+                <th>Original Filename</th>
+                <th>Size</th>
+                <th>SHA-256 Digest</th>
+                <th>Status</th>
+                <th>Created At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transfers-tbody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading transfer records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Block Power Indexing & Tamper Localization (Section 7.1, RQ v) -->
+    <section id="localize-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Block Power Indexing: Fine-Grained Tamper Localization</h2>
+            <p class="card-desc">Addressing Base Paper Research Question (v): Isolating and pinpointing the exact corrupted block(s) and byte offsets without manual inspection.</p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <select id="localize-select" style="padding: 0.6rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; color: white;">
+              <option value="">Select a transfer to inspect...</option>
+            </select>
+            <button class="btn btn-primary" onclick="runLocalization()">🎯 Inspect Block Integrity</button>
+          </div>
+        </div>
+
+        <div id="localize-summary-box" style="margin-bottom: 1.5rem; display: none;"></div>
+
+        <div id="localize-grid" class="block-grid">
+          <div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted); padding: 2rem;">
+            Select a transfer above or click "Localize" in the Transfer History tab to view the block integrity heatmap.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Avalanche Effect & Bit Diffusion Lab (Section II & IV) -->
+    <section id="avalanche-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Avalanche Effect & Bit Diffusion Lab</h2>
+            <p class="card-desc">Theoretical Foundation (Section II & IV): A single bit change in the input should flip ~50% of the output digest bits (Strict Avalanche Criterion).</p>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem;">
+          <div>
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Input Text / Data</label>
+            <textarea id="avalanche-text" rows="4" style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; color: white; font-family: var(--mono-font); font-size: 0.85rem;">Cryptographic Integrity Verification Baseline Data Gilbert 2025</textarea>
+
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+              <div style="flex: 1;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Algorithm</label>
+                <select id="avalanche-algo" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); border-radius: 8px; color: white;">
+                  <option value="sha256">SHA-256 (Merkle–Damgård)</option>
+                  <option value="sha3_256">SHA-3-256 (Keccak Sponge)</option>
+                  <option value="sha512">SHA-512 (64-bit Systems)</option>
+                  <option value="md5">MD5 (Legacy Broken Algorithm)</option>
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.3rem;">Bit Position to Flip</label>
+                <input type="number" id="avalanche-bit" value="0" min="0" max="64" style="width: 100%; padding: 0.6rem; background: rgba(0,0,0,0.4); border: 1px solid var(--card-border); border-radius: 8px; color: white;">
+              </div>
+            </div>
+
+            <button class="btn btn-primary" style="margin-top: 1.25rem; width: 100%;" onclick="runAvalancheTest()">
+              ⚡ Flip 1 Bit & Measure Avalanche Effect
+            </button>
+          </div>
+
+          <!-- Output Panel -->
+          <div id="avalanche-output" style="background: rgba(0,0,0,0.25); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.25rem;">
+            <h4 style="font-size: 0.95rem; margin-bottom: 0.75rem;">Avalanche Metric Output</h4>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">Click the button on the left to simulate a 1-bit perturbation.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: Cryptographic Algorithm Benchmark (Table 3, Section IX) -->
+    <section id="benchmark-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Cryptographic Algorithm Benchmark (Gilbert & Gilbert 2025)</h2>
+            <p class="card-desc">Empirical comparison of throughput (MB/s), latency, and NIST security status across SHA families (Table 3 & Section IX).</p>
+          </div>
+          <button class="btn btn-primary" onclick="runBenchmark()">⚡ Run Benchmark (2 MB Payload)</button>
+        </div>
+
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Family</th>
+                <th>Construction Type</th>
+                <th>Digest Bits</th>
+                <th>Throughput</th>
+                <th>Latency</th>
+                <th>NIST / Security Status</th>
+              </tr>
+            </thead>
+            <tbody id="benchmark-tbody">
+              <tr>
+                <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Click "Run Benchmark" to evaluate algorithms on your CPU.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 6: Duplicate Filename Strategy Visualizer -->
+    <section id="duplicate-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Duplicate Filename Collision Avoidance</h2>
+            <p class="card-desc">Section 5 Requirement: Never use filename alone as identity.</p>
+          </div>
+          <button class="btn btn-primary" onclick="simulateDuplicateTransfer()">⚡ Send 2 Duplicate 'report.pdf' Files</button>
+        </div>
+
+        <p style="font-size: 0.9rem; line-height: 1.6; margin-bottom: 1.5rem; color: #cbd5e1;">
+          When multiple clients transfer different files sharing the exact same name (e.g., <code style="color: #60a5fa;">report.pdf</code>),
+          the system generates a unique UUID v4 for each transfer and isolates the file inside its dedicated directory.
+          This guarantees zero accidental overwrites and ensures each file is verified against its own expected hash in MongoDB Atlas.
+        </p>
+
+        <div class="diagram-box">
+          <span class="folder">📁 received/</span><br>
+          │<br>
+          ├── <span class="folder">📁 1190028a-dd04-424e-ba53-d3638d14c7bc/</span> <span class="accent">&larr; (Transfer 1 UUID)</span><br>
+          │   └── <span class="file">📄 report.pdf</span> <span style="color: #94a3b8;">[SHA-256: cb2d16e3...]</span> &rarr; <span style="color:#34d399;">VERIFIED</span><br>
+          │<br>
+          └── <span class="folder">📁 827cc05a-b9be-4454-b1e3-99e071dc9908/</span> <span class="accent">&larr; (Transfer 2 UUID)</span><br>
+              └── <span class="file">📄 report.pdf</span> <span style="color: #94a3b8;">[SHA-256: 7f83b165...]</span> &rarr; <span style="color:#34d399;">VERIFIED</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 7: Standalone Hash Checker -->
+    <section id="calc-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Independent File Integrity Hash Checker</h2>
+            <p class="card-desc">Calculate SHA-256 and SHA-3 digests of any file and compare against expected checksums.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 650px;">
+          <div>
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Select Local File</label>
+            <input type="file" id="calc-file-input" style="padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white;">
+          </div>
+          <div>
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Expected SHA-256 or SHA-3 Hash (Optional for comparison)</label>
+            <input type="text" id="calc-hash-input" placeholder="e.g. cb2d16e3e4a82587b14e5332bc9eee6523d345cc5a2287a8850b122ca7a9e7a6" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-family: var(--mono-font); font-size: 0.85rem;">
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="computeStandaloneHash()">🔍 Calculate & Verify Hash</button>
+          </div>
+        </div>
+
+        <div id="calc-result" style="margin-top: 1.5rem; display: none;"></div>
+      </div>
+    </section>
+
+    <!-- TAB 8: Robustness Perturbation Lab (Section 6.1, 6.2, Figure 12, Table 2) -->
+    <section id="robustness-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Empirical Robustness Evaluation Lab (Table 2 & Figure 12)</h2>
+            <p class="card-desc">Tests cryptographic hash function resilience against three real-world data disturbances: bit-level noise, metadata alteration, and structural block reordering (Gilbert & Gilbert 2025).</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <div style="flex: 1; min-width: 280px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Test Payload or Text</label>
+            <input type="text" id="robustness-text-input" value="Secure Network File Transfer Cryptographic Robustness Benchmark (Gilbert & Gilbert 2025)" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-size: 0.85rem;">
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="runRobustnessEvaluation()">🧪 Run Robustness Test</button>
+          </div>
+        </div>
+
+        <div id="robustness-result" style="display: none;">
+          <!-- Scorecard -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="stat-card">
+              <div class="stat-label">Structural Agnosticism</div>
+              <div class="stat-value" style="color: #60a5fa;" id="score-agnosticism">100/100</div>
+              <div class="stat-sub">Distinguishes structural permutations</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Error Resilience</div>
+              <div class="stat-value" style="color: #34d399;" id="score-resilience">100/100</div>
+              <div class="stat-sub">Zero false negatives under noise</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Operational Stability</div>
+              <div class="stat-value" style="color: #a78bfa;" id="score-stability">100/100</div>
+              <div class="stat-sub">Consistent cross-domain detection</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Overall Robustness Index</div>
+              <div class="stat-value" style="color: #f59e0b;" id="score-overall">100/100</div>
+              <div class="stat-sub">Table 2 Evaluation Metric</div>
+            </div>
+          </div>
+
+          <!-- Scenario Cards -->
+          <div id="robustness-scenarios" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 9: Forensic Residual Signature & Tamper Classification (RQ v, Figure 14) -->
+    <section id="signature-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Residual Cryptographic Signature (RCS) & Forensic Tamper Classification</h2>
+            <p class="card-desc">Addresses Research Question v: Traces residual cryptographic signatures and Shannon entropy gradients to determine the origin and mechanism of file tampering.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <div style="flex: 1; min-width: 280px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Select Transfer to Trace</label>
+            <select id="signature-transfer-select" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-family: var(--mono-font); font-size: 0.85rem;">
+              <option value="">Loading stored transfers...</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="traceResidualSignature()">🔬 Trace Forensic Signature</button>
+          </div>
+        </div>
+
+        <div id="signature-result" style="display: none;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="stat-card">
+              <div class="stat-label">Tamper Classification</div>
+              <div class="stat-value" style="font-size: 1.3rem; color: #f87171;" id="sig-class">RANDOM_BIT_FLIP</div>
+              <div class="stat-sub" id="sig-conf">Confidence: 92%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Bytes Discrepancy</div>
+              <div class="stat-value" style="color: #fbbf24;" id="sig-bytes">1 byte</div>
+              <div class="stat-sub" id="sig-blocks">1 block altered</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Shannon Entropy Shift</div>
+              <div class="stat-value" style="color: #60a5fa;" id="sig-entropy">+0.0000</div>
+              <div class="stat-sub" id="sig-entropy-sub">Original: 4.69 -> Tampered: 4.69</div>
+            </div>
+          </div>
+
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <div style="font-weight: 600; margin-bottom: 0.5rem; color: #93c5fd;">Forensic Analysis Assessment:</div>
+            <p id="sig-desc" style="font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.75rem;"></p>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--mono-font);">
+              Deterministic Residual Signature Hash: <span id="sig-hash" style="color: #34d399;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 10: Birthday Attack & Collision Probability Calculator (Section 5.1 & 5.2) -->
+    <section id="collision-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Birthday Attack & Collision Probability Simulator</h2>
+            <p class="card-desc">Calculates Birthday Paradox collision probabilities P &approx; 1 - e<sup>-k(k-1)/(2&times;2<sup>n</sup>)</sup> and evaluates comparative attack feasibility across hash families (Figures 8, 9, 10).</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <div style="min-width: 200px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Hash Algorithm</label>
+            <select id="collision-algo-select" onchange="runCollisionCalculator()" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-size: 0.85rem;">
+              <option value="256">SHA-256 (256-bit Merkle-Damgård)</option>
+              <option value="256">SHA-3-256 (256-bit Keccak Sponge)</option>
+              <option value="128">MD5 (128-bit Broken)</option>
+              <option value="160">SHA-1 (160-bit Broken)</option>
+              <option value="512">SHA-512 (512-bit High Security)</option>
+            </select>
+          </div>
+          <div style="flex: 1; min-width: 240px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Number of Generated Hashes (k)</label>
+            <input type="number" id="collision-items-input" value="1000000000" min="2" onchange="runCollisionCalculator()" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-family: var(--mono-font); font-size: 0.85rem;">
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="runCollisionCalculator()">🎲 Compute Probability</button>
+          </div>
+        </div>
+
+        <!-- Collision Result -->
+        <div id="collision-result-box" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Collision Probability</div>
+              <div style="font-size: 1.4rem; font-weight: 700; color: #34d399;" id="col-prob-val">0.0%</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Birthday Bound (50% Collision Point)</div>
+              <div style="font-size: 1.4rem; font-weight: 700; color: #60a5fa;" id="col-bound-val">2^128 items</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Cryptographic Assessment</div>
+              <div style="font-size: 1rem; font-weight: 600; color: #fbbf24;" id="col-verdict-val">CRYPTOGRAPHICALLY SECURE</div>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Cryptographic Attack Feasibility Matrix (Figures 8 & 9)</h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Bits</th>
+                <th>Collision Work Factor</th>
+                <th>Preimage Work Factor</th>
+                <th>Status</th>
+                <th>Known Attack Vector</th>
+              </tr>
+            </thead>
+            <tbody id="attack-matrix-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    Advanced Cryptographic Data Integrity Platform • Based on Gilbert & Gilbert (2025) • MongoDB Atlas Cloud Storage
+  </footer>
+
+  <script>
+    let selectedFiles = [];
+    let currentTransfers = [];
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
+
+      if (tabId === 'history-tab') {
+        fetchTransfers();
+      } else if (tabId === 'localize-tab') {
+        populateLocalizeDropdown();
+      } else if (tabId === 'benchmark-tab') {
+        runBenchmark();
+      } else if (tabId === 'robustness-tab') {
+        runRobustnessEvaluation();
+      } else if (tabId === 'signature-tab') {
+        populateSignatureDropdown();
+      } else if (tabId === 'collision-tab') {
+        runCollisionCalculator();
+      }
+    }
+
+    // Drag and drop handlers
+    const dropzone = document.getElementById('dropzone');
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', () => { dropzone.classList.remove('dragover'); });
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+      if (e.dataTransfer.files.length > 0) {
+        addFiles(Array.from(e.dataTransfer.files));
+      }
+    });
+
+    function handleFileSelect(e) {
+      if (e.target.files.length > 0) {
+        addFiles(Array.from(e.target.files));
+      }
+    }
+
+    function addFiles(files) {
+      selectedFiles = selectedFiles.concat(files);
+      renderFileList();
+    }
+
+    function clearSelectedFiles() {
+      selectedFiles = [];
+      renderFileList();
+      document.getElementById('result-box').style.display = 'none';
+      document.getElementById('progress-box').style.display = 'none';
+    }
+
+    function renderFileList() {
+      const list = document.getElementById('file-list');
+      const sendBtn = document.getElementById('send-btn');
+      const clearBtn = document.getElementById('clear-btn');
+      list.innerHTML = '';
+
+      if (selectedFiles.length === 0) {
+        sendBtn.style.display = 'none';
+        clearBtn.style.display = 'none';
+        return;
+      }
+
+      sendBtn.style.display = 'inline-flex';
+      clearBtn.style.display = 'inline-flex';
+
+      selectedFiles.forEach((f, idx) => {
+        const item = document.createElement('div');
+        item.className = 'file-preview-item';
+        item.innerHTML = `
+          <div class="file-info">
+            <span style="font-size: 1.2rem;">📄</span>
+            <div>
+              <div class="file-name">${escapeHtml(f.name)}</div>
+              <div class="file-size">${formatBytes(f.size)}</div>
+            </div>
+          </div>
+          <button class="btn btn-sm btn-danger" onclick="removeFile(${idx})">✕</button>
+        `;
+        list.appendChild(item);
+      });
+    }
+
+    function removeFile(idx) {
+      selectedFiles.splice(idx, 1);
+      renderFileList();
+    }
+
+    function formatBytes(bytes) {
+      if (bytes === 0) return '0 Bytes';
+      const k = 1024;
+      const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      );
+    }
+
+    async function uploadFiles() {
+      if (selectedFiles.length === 0) return;
+
+      const progressBox = document.getElementById('progress-box');
+      const progressFill = document.getElementById('progress-fill');
+      const progressStatus = document.getElementById('progress-status');
+      const progressPercent = document.getElementById('progress-percent');
+      const sendBtn = document.getElementById('send-btn');
+
+      progressBox.style.display = 'block';
+      sendBtn.disabled = true;
+
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
+        progressStatus.textContent = `Computing SHA-256 + SHA-3 & Block Index for ${file.name}...`;
+        progressPercent.textContent = `50%`;
+        progressFill.style.width = `50%`;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+          const resp = await fetch('/api/transfer', {
+            method: 'POST',
+            body: formData
+          });
+          const text = await resp.text();
+          let result;
+          try {
+            result = JSON.parse(text);
+          } catch (jsonErr) {
+            throw new Error(`Server returned non-JSON response (${resp.status}): ${text.substring(0, 120)}...`);
+          }
+
+          if (!resp.ok || result.status === 'FAILED') {
+            throw new Error(result.error || result.message || `Upload failed with status ${resp.status}`);
+          }
+
+          progressFill.style.width = `100%`;
+          progressPercent.textContent = `100%`;
+          progressStatus.textContent = `Complete! Dual-Layer Integrity Verified.`;
+
+          showResultCard(result);
+        } catch (err) {
+          progressFill.style.width = `0%`;
+          progressPercent.textContent = `0%`;
+          progressStatus.textContent = `Upload failed: ${err.message}`;
+          alert('Upload failed: ' + err.message);
+        }
+      }
+
+      sendBtn.disabled = false;
+      fetchStats();
+      fetchTransfers();
+    }
+
+    function showResultCard(res) {
+      const box = document.getElementById('result-box');
+      const badge = document.getElementById('result-badge');
+      const title = document.getElementById('result-title');
+      const details = document.getElementById('result-details');
+
+      box.className = `result-card ${res.status}`;
+      box.style.display = 'block';
+
+      badge.className = `badge badge-${res.status.toLowerCase()}`;
+      badge.textContent = res.status;
+
+      title.textContent = `Transfer Result: ${res.filename} (${res.status})`;
+
+      details.innerHTML = `
+        <div class="detail-item">
+          <div class="detail-title">Transfer UUID</div>
+          <div class="detail-val">${res.transfer_id}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-title">File Size & Blocks</div>
+          <div class="detail-val">${formatBytes(res.file_size)} (${res.block_count || 1} Blocks Indexed)</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-title">SHA-256 Digest (Merkle–Damgård)</div>
+          <div class="detail-val">${res.sender_hash || 'N/A'}</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-title">SHA-3-256 Digest (Keccak Sponge)</div>
+          <div class="detail-val" style="color: #c084fc;">${res.sha3_256 || 'N/A'}</div>
+        </div>
+        <div class="detail-item" style="grid-column: 1 / -1;">
+          <div class="detail-title">Verification Outcome</div>
+          <div class="detail-val">${escapeHtml(res.message || 'No details')}</div>
+        </div>
+      `;
+    }
+
+    async function fetchStats() {
+      try {
+        const resp = await fetch('/api/stats');
+        const data = await resp.json();
+        document.getElementById('stat-total').textContent = data.total;
+        document.getElementById('stat-verified').textContent = data.verified;
+        document.getElementById('stat-mismatch').textContent = data.mismatch;
+        document.getElementById('stat-failed').textContent = data.failed;
+        if (data.backend) {
+          const isMongo = data.backend.toLowerCase() === 'mongodb';
+          document.getElementById('system-status-text').textContent = isMongo ? 'MongoDB Atlas Connected (Cluster0)' : 'SQLite Local DB';
+          const subEl = document.getElementById('stat-total-sub');
+          if (subEl) {
+            subEl.textContent = isMongo ? 'Logged in MongoDB Atlas' : 'Logged in transfers.db';
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch stats:', err);
+      }
+    }
+
+    async function fetchTransfers() {
+      try {
+        const resp = await fetch('/api/transfers');
+        const list = await resp.json();
+        currentTransfers = list;
+        const tbody = document.getElementById('transfers-tbody');
+        tbody.innerHTML = '';
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">No transfers recorded yet.</td></tr>`;
+          return;
+        }
+
+        list.forEach(r => {
+          const tr = document.createElement('tr');
+          const shortHash = (r.expected_hash || '').substring(0, 16) + '...';
+          const badgeClass = `badge-${r.status.toLowerCase()}`;
+          const dateStr = (r.created_at || '').substring(0, 19).replace('T', ' ');
+
+          tr.innerHTML = `
+            <td class="uuid-cell">${r.transfer_id}</td>
+            <td style="font-weight: 500;">${escapeHtml(r.original_filename)}</td>
+            <td style="font-family: var(--mono-font);">${formatBytes(r.file_size)}</td>
+            <td class="hash-cell" title="SHA-256: ${r.expected_hash}&#10;SHA-3: ${r.sha3_256 || 'N/A'}">${shortHash}</td>
+            <td><span class="badge ${badgeClass}" id="badge-${r.transfer_id}">${r.status}</span></td>
+            <td style="font-size: 0.75rem; color: var(--text-muted);">${dateStr}</td>
+            <td>
+              <div class="action-group">
+                <button class="btn btn-sm btn-primary" onclick="verifySingle('${r.transfer_id}')">🔍 Verify</button>
+                <button class="btn btn-sm btn-purple" title="Inspect Block Power Index" onclick="jumpToLocalize('${r.transfer_id}')">🎯 Localize</button>
+                <button class="btn btn-sm btn-danger" title="Inject Tampered Bytes" onclick="tamperSingle('${r.transfer_id}')">⚡ Tamper</button>
+                <button class="btn btn-sm btn-secondary" title="Export Research & Forensic Report" onclick="exportReport('${r.transfer_id}')">📄 Report</button>
+                <a class="btn btn-sm btn-secondary" href="/api/download/${r.transfer_id}" target="_blank">⬇️</a>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Failed to fetch transfers:', err);
+      }
+    }
+
+    async function verifySingle(transferId) {
+      try {
+        const resp = await fetch(`/api/verify/${transferId}`, { method: 'POST' });
+        const res = await resp.json();
+        const badge = document.getElementById(`badge-${transferId}`);
+        if (badge) {
+          badge.className = `badge badge-${res.status.toLowerCase()}`;
+          badge.textContent = res.status;
+        }
+        alert(`Verification Result for ${res.filename || transferId}:\nStatus: ${res.status}\n${res.message}`);
+        fetchStats();
+      } catch (err) {
+        alert('Verification error: ' + err.message);
+      }
+    }
+
+    async function tamperSingle(transferId) {
+      if (!confirm('This will modify the file on disk to test block-level tamper localization. Proceed?')) return;
+      try {
+        const resp = await fetch(`/api/tamper/${transferId}`, { method: 'POST' });
+        const res = await resp.json();
+        alert(res.message + '\nNow jump to "Tamper Localization" tab to inspect the exact corrupted block!');
+        fetchTransfers();
+        fetchStats();
+        jumpToLocalize(transferId);
+      } catch (err) {
+        alert('Tamper test error: ' + err.message);
+      }
+    }
+
+    function jumpToLocalize(transferId) {
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      switchTab('localize-tab', tabBtns[2]);
+      const sel = document.getElementById('localize-select');
+      populateLocalizeDropdown();
+      sel.value = transferId;
+      runLocalization();
+    }
+
+    function populateLocalizeDropdown() {
+      const sel = document.getElementById('localize-select');
+      sel.innerHTML = '<option value="">Select a transfer to inspect...</option>';
+      currentTransfers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.transfer_id;
+        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0, 8)}...) - ${t.status}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function runLocalization() {
+      const transferId = document.getElementById('localize-select').value;
+      if (!transferId) {
+        alert('Please select a transfer record first.');
+        return;
+      }
+
+      const grid = document.getElementById('localize-grid');
+      const sumBox = document.getElementById('localize-summary-box');
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: var(--text-muted);">Comparing Block Power Index against disk blocks...</div>';
+
+      try {
+        const resp = await fetch(`/api/localize/${transferId}`, { method: 'POST' });
+        const res = await resp.json();
+
+        if (res.status === 'FAILED') {
+          grid.innerHTML = `<div style="grid-column: 1 / -1; color: #f87171; text-align: center;">${res.error}</div>`;
+          return;
+        }
+
+        sumBox.style.display = 'block';
+        sumBox.innerHTML = `
+          <div style="background: rgba(0,0,0,0.3); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--card-border);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+              <div>
+                <h3 style="font-size: 1.1rem; font-weight: 600;">Localization Summary: ${escapeHtml(res.filename)}</h3>
+                <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 0.25rem;">${escapeHtml(res.summary)}</p>
+              </div>
+              <span class="badge ${res.is_intact ? 'badge-verified' : 'badge-mismatch'}" style="font-size: 0.9rem; padding: 0.4rem 0.8rem;">
+                ${res.is_intact ? '100% INTACT' : `${res.corruption_percentage}% CORRUPTED`}
+              </span>
+            </div>
+            <div style="display: flex; gap: 2rem; margin-top: 1rem; font-size: 0.85rem;">
+              <div>Total Blocks: <strong>${res.total_blocks}</strong></div>
+              <div>Intact Blocks: <strong style="color: #34d399;">${res.intact_count}</strong></div>
+              <div>Corrupted Blocks: <strong style="color: #f87171;">${res.corrupted_count}</strong></div>
+              <div>Tampered Bytes: <strong>${res.tampered_bytes} / ${res.total_bytes} bytes</strong></div>
+            </div>
+          </div>
+        `;
+
+        grid.innerHTML = '';
+        const corruptedSet = new Map();
+        (res.corrupted_blocks || []).forEach(b => corruptedSet.set(b.block_id, b));
+
+        for (let i = 0; i < res.total_blocks; i++) {
+          const isCorr = corruptedSet.has(i);
+          const cData = corruptedSet.get(i);
+          const card = document.createElement('div');
+          card.className = `block-card ${isCorr ? 'corrupted' : 'intact'}`;
+
+          const startOffset = cData ? cData.offset_start : (i * 64 * 1024);
+          const endOffset = cData ? cData.offset_end : ((i + 1) * 64 * 1024);
+
+          card.innerHTML = `
+            <div class="block-num">Block #${i}</div>
+            <div class="block-range">[${startOffset.toLocaleString()} - ${endOffset.toLocaleString()} B]</div>
+            <div class="block-status">${isCorr ? '❌ TAMPERED' : '✅ INTACT'}</div>
+            ${isCorr ? `<div style="font-size: 0.65rem; color: #fca5a5; margin-top: 0.25rem;">${cData.reason}</div>` : ''}
+          `;
+          grid.appendChild(card);
+        }
+
+      } catch (err) {
+        grid.innerHTML = `<div style="grid-column: 1 / -1; color: #f87171; text-align: center;">Localization error: ${err.message}</div>`;
+      }
+    }
+
+    // Avalanche Effect Test
+    async function runAvalancheTest() {
+      const text = document.getElementById('avalanche-text').value;
+      const algo = document.getElementById('avalanche-algo').value;
+      const bit = document.getElementById('avalanche-bit').value;
+      const out = document.getElementById('avalanche-output');
+
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('algorithm', algo);
+      formData.append('bit_to_flip', bit);
+
+      out.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 2rem;">Computing bitwise diffusion...</div>';
+
+      try {
+        const resp = await fetch('/api/avalanche', { method: 'POST', body: formData });
+        const res = await resp.json();
+
+        out.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+            <h4 style="font-size: 1rem; font-weight: 600;">${res.algorithm} Avalanche Metric</h4>
+            <span class="badge badge-verified">${res.verdict}</span>
+          </div>
+
+          <div style="font-size: 0.85rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between;">
+            <span>Bit Divergence: <strong>${res.avalanche_percentage}%</strong></span>
+            <span>Target: <strong>50.0%</strong></span>
+          </div>
+
+          <div class="avalanche-meter">
+            <div class="ideal-marker" title="Ideal 50% Diffusion Mark"></div>
+            <div class="avalanche-fill" style="width: ${res.avalanche_percentage}%;"></div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; font-size: 0.8rem; margin-top: 1rem;">
+            <div class="detail-item">
+              <div class="detail-title">Output Digest Bits</div>
+              <div class="detail-val">${res.total_digest_bits} bits</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-title">Bits Flipped (1-Bit Input Change)</div>
+              <div class="detail-val" style="color: #60a5fa;">${res.flipped_bits} bits</div>
+            </div>
+          </div>
+
+          <div class="detail-item" style="margin-top: 0.75rem;">
+            <div class="detail-title">Original Hex Digest</div>
+            <div class="detail-val" style="color: #34d399;">${res.original_hex}</div>
+          </div>
+          <div class="detail-item" style="margin-top: 0.5rem;">
+            <div class="detail-title">Perturbed Hex Digest (1-bit change at bit ${res.flipped_bit_position})</div>
+            <div class="detail-val" style="color: #f87171;">${res.perturbed_hex}</div>
+          </div>
+        `;
+      } catch (err) {
+        out.innerHTML = `<div style="color: #f87171;">Avalanche test failed: ${err.message}</div>`;
+      }
+    }
+
+    // Benchmark Run
+    async function runBenchmark() {
+      const tbody = document.getElementById('benchmark-tbody');
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">Benchmarking SHA families on local CPU...</td></tr>';
+
+      try {
+        const resp = await fetch('/api/benchmark?size_mb=2.0');
+        const data = await resp.json();
+        tbody.innerHTML = '';
+
+        data.results.forEach(r => {
+          const tr = document.createElement('tr');
+          const isSafe = r.is_secure;
+          tr.innerHTML = `
+            <td style="font-weight: 700; font-family: var(--mono-font);">${r.algorithm}</td>
+            <td>${r.family}</td>
+            <td style="font-family: var(--mono-font); color: #93c5fd;">${r.construction}</td>
+            <td>${r.digest_bits} bits</td>
+            <td style="font-family: var(--mono-font); font-weight: 600; color: #34d399;">${r.throughput_mb_s} MB/s</td>
+            <td style="font-family: var(--mono-font);">${r.latency_ms} ms</td>
+            <td>
+              <span class="badge ${isSafe ? 'badge-verified' : 'badge-mismatch'}" style="font-size: 0.7rem;">
+                ${r.security_status}
+              </span>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #f87171;">Benchmark failed: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function auditAll() {
+      try {
+        const resp = await fetch('/api/verify-all', { method: 'POST' });
+        const res = await resp.json();
+        alert(`Audit Complete!\nVerified: ${res.verified}\nMismatches: ${res.mismatch}\nFailed: ${res.failed}`);
+        fetchTransfers();
+        fetchStats();
+      } catch (err) {
+        alert('Audit error: ' + err.message);
+      }
+    }
+
+    async function loadSampleFile(filename) {
+      try {
+        const resp = await fetch(`/api/sample/${filename}`);
+        const blob = await resp.blob();
+        const file = new File([blob], filename, { type: blob.type });
+        addFiles([file]);
+      } catch (err) {
+        alert('Could not load sample file: ' + err.message);
+      }
+    }
+
+    async function simulateDuplicateTransfer() {
+      alert("Triggering transfer of two distinct files both named 'report.pdf'...");
+      try {
+        const resp = await fetch('/api/demo/duplicate', { method: 'POST' });
+        const data = await resp.json();
+        alert(`Duplicate Transfer Success!\nTransfer 1 ID: ${data.transfer1.transfer_id}\nTransfer 2 ID: ${data.transfer2.transfer_id}\nBoth stored safely in distinct UUID folders!`);
+        fetchStats();
+        fetchTransfers();
+        switchTab('history-tab', document.querySelectorAll('.tab-btn')[1]);
+      } catch (err) {
+        alert('Duplicate test failed: ' + err.message);
+      }
+    }
+
+    async function computeStandaloneHash() {
+      const fileInput = document.getElementById('calc-file-input');
+      const hashInput = document.getElementById('calc-hash-input');
+      const resultDiv = document.getElementById('calc-result');
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert('Please select a file first.');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      if (hashInput.value.trim()) {
+        formData.append('expected_hash', hashInput.value.trim());
+      }
+
+      try {
+        const resp = await fetch('/api/check-file', {
+          method: 'POST',
+          body: formData
+        });
+        const res = await resp.json();
+        resultDiv.style.display = 'block';
+
+        const matchHtml = res.expected_hash ? 
+          `<div style="margin-top: 0.5rem;"><span class="badge badge-${res.status.toLowerCase()}">${res.status}</span> ${res.message}</div>` : '';
+
+        resultDiv.innerHTML = `
+          <div class="detail-item" style="background: rgba(0,0,0,0.4); padding: 1rem; border-radius: 10px;">
+            <div class="detail-title">Calculated SHA-256 Digest</div>
+            <div class="detail-val" style="color: #60a5fa; font-size: 0.95rem; margin-top: 0.25rem;">${res.calculated_hash}</div>
+            <div class="detail-title" style="margin-top: 0.75rem;">Calculated SHA-3-256 Digest (Sponge)</div>
+            <div class="detail-val" style="color: #c084fc; font-size: 0.95rem; margin-top: 0.25rem;">${res.sha3_256}</div>
+            ${matchHtml}
+          </div>
+        `;
+      } catch (err) {
+        alert('Hash computation failed: ' + err.message);
+      }
+    }
+
+    // Robustness Perturbation Lab (Table 2 & Figure 12)
+    async function runRobustnessEvaluation() {
+      const text = document.getElementById('robustness-text-input').value;
+      const resDiv = document.getElementById('robustness-result');
+      const scDiv = document.getElementById('robustness-scenarios');
+
+      try {
+        const resp = await fetch('/api/robustness-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text })
+        });
+        const res = await resp.json();
+        resDiv.style.display = 'block';
+
+        const scores = res.table2_criteria_scores;
+        document.getElementById('score-agnosticism').textContent = `${scores.structural_agnosticism}/100`;
+        document.getElementById('score-resilience').textContent = `${scores.error_resilience}/100`;
+        document.getElementById('score-stability').textContent = `${scores.operational_stability}/100`;
+        document.getElementById('score-overall').textContent = `${scores.overall_robustness_index}/100`;
+
+        scDiv.innerHTML = '';
+        res.scenarios.forEach(sc => {
+          const card = document.createElement('div');
+          card.style.background = 'rgba(15, 23, 42, 0.6)';
+          card.style.border = '1px solid var(--card-border)';
+          card.style.borderRadius = '10px';
+          card.style.padding = '1.25rem';
+
+          card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <h4 style="font-size: 0.95rem; font-weight: 600;">${sc.scenario}</h4>
+              <span class="badge ${sc.detected ? 'badge-verified' : 'badge-mismatch'}">${sc.detected ? 'DETECTED' : 'MISSED'}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Perturbed SHA-256 Digest:
+              <div style="font-family: var(--mono-font); color: #93c5fd; font-size: 0.75rem; word-break: break-all; margin-top: 0.25rem;">${sc.new_sha256}</div>
+            </div>
+            <div style="font-size: 0.75rem; color: #a78bfa;">
+              ${sc.meta.description || `Injected noise at ${sc.meta.modified_bytes_count || 1} byte position(s)`}
+            </div>
+          `;
+          scDiv.appendChild(card);
+        });
+      } catch (err) {
+        alert('Robustness test error: ' + err.message);
+      }
+    }
+
+    // Forensic Residual Signature (RQ v)
+    function populateSignatureDropdown() {
+      const sel = document.getElementById('signature-transfer-select');
+      sel.innerHTML = '<option value="">Select a transfer record...</option>';
+      currentTransfers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.transfer_id;
+        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0, 8)}...) - ${t.status}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function traceResidualSignature() {
+      const sel = document.getElementById('signature-transfer-select');
+      const transferId = sel.value;
+      if (!transferId) {
+        alert('Please select a transfer record from the dropdown.');
+        return;
+      }
+
+      try {
+        const resp = await fetch('/api/trace-signature', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transfer_id: transferId })
+        });
+        const res = await resp.json();
+        if (res.status === 'FAILED') {
+          alert('Trace error: ' + res.error);
+          return;
+        }
+
+        document.getElementById('signature-result').style.display = 'block';
+        document.getElementById('sig-class').textContent = res.tamper_classification;
+        document.getElementById('sig-conf').textContent = `Confidence: ${res.confidence_percentage}%`;
+        document.getElementById('sig-bytes').textContent = `${res.total_bytes_altered} byte(s)`;
+        document.getElementById('sig-blocks').textContent = `${res.corrupted_blocks_count} block(s) altered`;
+        document.getElementById('sig-entropy').textContent = `${res.overall_entropy.shift >= 0 ? '+' : ''}${res.overall_entropy.shift.toFixed(4)}`;
+        document.getElementById('sig-entropy-sub').textContent = `Orig: ${res.overall_entropy.original} -> Tamp: ${res.overall_entropy.tampered}`;
+        document.getElementById('sig-desc').textContent = res.description;
+        document.getElementById('sig-hash').textContent = res.residual_signature_hash;
+      } catch (err) {
+        alert('Forensic trace failed: ' + err.message);
+      }
+    }
+
+    // Birthday Attack & Collision Calculator
+    async function runCollisionCalculator() {
+      const bits = document.getElementById('collision-algo-select').value;
+      const items = document.getElementById('collision-items-input').value;
+
+      try {
+        const resp = await fetch(`/api/collision-calculator?items=${items}&bits=${bits}`);
+        const data = await resp.json();
+        const c = data.collision_analysis;
+
+        document.getElementById('col-prob-val').textContent = c.collision_probability_formatted;
+        document.getElementById('col-bound-val').textContent = `2^${c.birthday_bound_bits} items`;
+        document.getElementById('col-verdict-val').textContent = c.security_verdict;
+
+        const tbody = document.getElementById('attack-matrix-tbody');
+        tbody.innerHTML = '';
+        data.attack_feasibility_matrix.forEach(m => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 700; font-family: var(--mono-font);">${m.algorithm}</td>
+            <td>${m.digest_bits} bits</td>
+            <td style="font-family: var(--mono-font); color: #93c5fd;">${m.collision_resistance_work}</td>
+            <td style="font-family: var(--mono-font);">${m.preimage_resistance_work}</td>
+            <td>
+              <span class="badge ${m.is_cryptographically_broken ? 'badge-mismatch' : 'badge-verified'}">
+                ${m.is_cryptographically_broken ? 'BROKEN / DEPRECATED' : 'SECURE'}
+              </span>
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${m.attack_history}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Collision calculator error:', err);
+      }
+    }
+
+    // Export Academic Report
+    async function exportReport(transferId) {
+      try {
+        const resp = await fetch(`/api/report/${transferId}`);
+        const report = await resp.json();
+        const jsonStr = JSON.stringify(report, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `integrity_audit_report_${transferId.substring(0, 8)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Could not export audit report: ' + err.message);
+      }
+    }
+
+    // Initial load
+    fetchStats();
+    fetchTransfers();
+  </script>
+</body>
+</html>

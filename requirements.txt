@@ -1,16 +1,5 @@
-# Secure Network File Transfer
-# Core application uses Python 3.8+ Standard Library
-# Storage backend: MongoDB Atlas and SQLite
-
-# MongoDB driver:
+# Runtime dependencies for Web Application and Vercel Deployment
+Flask>=3.0.0
 pymongo>=4.0.0
 dnspython>=2.0.0
-
-# Web Dashboard:
-flask>=2.0.0
-
-# Cryptography (TLS Certificates):
 cryptography>=41.0.0
-
-# Testing:
-pytest>=7.0.0
