@@ -1,0 +1,13 @@
+.git
+.pytest_cache
+*.log
+logs/
+data/
+received/
+tests/
+*.bat
+*.pyc
+__pycache__
+*.pdf
+*.pptx
+*.docx

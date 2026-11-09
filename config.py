@@ -1,17 +1,27 @@
 """
 Configuration settings for Secure Network File Transfer system.
 Supports local SQLite and cloud MongoDB Atlas storage backends.
+Optimized for local execution and Vercel serverless deployment.
 """
 
 import os
 from pathlib import Path
 
 # Base directories
-BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
-LOGS_DIR = BASE_DIR / "logs"
-RECEIVED_DIR = BASE_DIR / "received"
-SENDER_FILES_DIR = BASE_DIR / "sender_files"
+REPO_DIR = Path(__file__).resolve().parent
+IS_VERCEL = bool(os.environ.get("VERCEL") or os.environ.get("VERCEL_ENV"))
+
+# On Vercel, only /tmp is writable
+if IS_VERCEL:
+    WRITABLE_BASE = Path("/tmp")
+else:
+    WRITABLE_BASE = REPO_DIR
+
+BASE_DIR = REPO_DIR
+DATA_DIR = WRITABLE_BASE / "data"
+LOGS_DIR = WRITABLE_BASE / "logs"
+RECEIVED_DIR = WRITABLE_BASE / "received"
+SENDER_FILES_DIR = REPO_DIR / "sender_files"
 
 # SQLite Database and Logging paths
 DB_PATH = DATA_DIR / "transfers.db"
@@ -44,7 +54,10 @@ AUTH_TOKEN = os.environ.get("NFT_AUTH_TOKEN", "secure-transfer-token-xyz")
 
 def init_directories():
     """Ensure required runtime directories exist."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    LOGS_DIR.mkdir(parents=True, exist_ok=True)
-    RECEIVED_DIR.mkdir(parents=True, exist_ok=True)
-    SENDER_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        RECEIVED_DIR.mkdir(parents=True, exist_ok=True)
+        SENDER_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass

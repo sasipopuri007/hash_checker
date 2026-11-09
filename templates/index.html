@@ -662,6 +662,15 @@
       <button class="tab-btn" onclick="switchTab('duplicate-tab', this)">
         <span>🗂️</span> Duplicate Filename Strategy
       </button>
+      <button class="tab-btn" onclick="switchTab('robustness-tab', this)">
+        <span>🧪</span> Robustness Lab (Table 2)
+      </button>
+      <button class="tab-btn" onclick="switchTab('signature-tab', this)">
+        <span>🔬</span> Forensic Residual Signature (RQ v)
+      </button>
+      <button class="tab-btn" onclick="switchTab('collision-tab', this)">
+        <span>🎲</span> Collision & Birthday Attack
+      </button>
       <button class="tab-btn" onclick="switchTab('calc-tab', this)">
         <span>🔍</span> Standalone Hash Checker
       </button>
@@ -918,6 +927,176 @@
         <div id="calc-result" style="margin-top: 1.5rem; display: none;"></div>
       </div>
     </section>
+
+    <!-- TAB 8: Robustness Perturbation Lab (Section 6.1, 6.2, Figure 12, Table 2) -->
+    <section id="robustness-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Empirical Robustness Evaluation Lab (Table 2 & Figure 12)</h2>
+            <p class="card-desc">Tests cryptographic hash function resilience against three real-world data disturbances: bit-level noise, metadata alteration, and structural block reordering (Gilbert & Gilbert 2025).</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <div style="flex: 1; min-width: 280px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Test Payload or Text</label>
+            <input type="text" id="robustness-text-input" value="Secure Network File Transfer Cryptographic Robustness Benchmark (Gilbert & Gilbert 2025)" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-size: 0.85rem;">
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="runRobustnessEvaluation()">🧪 Run Robustness Test</button>
+          </div>
+        </div>
+
+        <div id="robustness-result" style="display: none;">
+          <!-- Scorecard -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="stat-card">
+              <div class="stat-label">Structural Agnosticism</div>
+              <div class="stat-value" style="color: #60a5fa;" id="score-agnosticism">100/100</div>
+              <div class="stat-sub">Distinguishes structural permutations</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Error Resilience</div>
+              <div class="stat-value" style="color: #34d399;" id="score-resilience">100/100</div>
+              <div class="stat-sub">Zero false negatives under noise</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Operational Stability</div>
+              <div class="stat-value" style="color: #a78bfa;" id="score-stability">100/100</div>
+              <div class="stat-sub">Consistent cross-domain detection</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Overall Robustness Index</div>
+              <div class="stat-value" style="color: #f59e0b;" id="score-overall">100/100</div>
+              <div class="stat-sub">Table 2 Evaluation Metric</div>
+            </div>
+          </div>
+
+          <!-- Scenario Cards -->
+          <div id="robustness-scenarios" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1rem;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 9: Forensic Residual Signature & Tamper Classification (RQ v, Figure 14) -->
+    <section id="signature-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Residual Cryptographic Signature (RCS) & Forensic Tamper Classification</h2>
+            <p class="card-desc">Addresses Research Question v: Traces residual cryptographic signatures and Shannon entropy gradients to determine the origin and mechanism of file tampering.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <div style="flex: 1; min-width: 280px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Select Transfer to Trace</label>
+            <select id="signature-transfer-select" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-family: var(--mono-font); font-size: 0.85rem;">
+              <option value="">Loading stored transfers...</option>
+            </select>
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="traceResidualSignature()">🔬 Trace Forensic Signature</button>
+          </div>
+        </div>
+
+        <div id="signature-result" style="display: none;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+            <div class="stat-card">
+              <div class="stat-label">Tamper Classification</div>
+              <div class="stat-value" style="font-size: 1.3rem; color: #f87171;" id="sig-class">RANDOM_BIT_FLIP</div>
+              <div class="stat-sub" id="sig-conf">Confidence: 92%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Bytes Discrepancy</div>
+              <div class="stat-value" style="color: #fbbf24;" id="sig-bytes">1 byte</div>
+              <div class="stat-sub" id="sig-blocks">1 block altered</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">Shannon Entropy Shift</div>
+              <div class="stat-value" style="color: #60a5fa;" id="sig-entropy">+0.0000</div>
+              <div class="stat-sub" id="sig-entropy-sub">Original: 4.69 -> Tampered: 4.69</div>
+            </div>
+          </div>
+
+          <div style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 10px; padding: 1.25rem; margin-bottom: 1.5rem;">
+            <div style="font-weight: 600; margin-bottom: 0.5rem; color: #93c5fd;">Forensic Analysis Assessment:</div>
+            <p id="sig-desc" style="font-size: 0.9rem; color: var(--text-main); margin-bottom: 0.75rem;"></p>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--mono-font);">
+              Deterministic Residual Signature Hash: <span id="sig-hash" style="color: #34d399;"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 10: Birthday Attack & Collision Probability Calculator (Section 5.1 & 5.2) -->
+    <section id="collision-tab" class="tab-content">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h2 class="card-title">Birthday Attack & Collision Probability Simulator</h2>
+            <p class="card-desc">Calculates Birthday Paradox collision probabilities P &approx; 1 - e<sup>-k(k-1)/(2&times;2<sup>n</sup>)</sup> and evaluates comparative attack feasibility across hash families (Figures 8, 9, 10).</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1.5rem;">
+          <div style="min-width: 200px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Hash Algorithm</label>
+            <select id="collision-algo-select" onchange="runCollisionCalculator()" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-size: 0.85rem;">
+              <option value="256">SHA-256 (256-bit Merkle-Damgård)</option>
+              <option value="256">SHA-3-256 (256-bit Keccak Sponge)</option>
+              <option value="128">MD5 (128-bit Broken)</option>
+              <option value="160">SHA-1 (160-bit Broken)</option>
+              <option value="512">SHA-512 (512-bit High Security)</option>
+            </select>
+          </div>
+          <div style="flex: 1; min-width: 240px;">
+            <label style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-bottom: 0.4rem;">Number of Generated Hashes (k)</label>
+            <input type="number" id="collision-items-input" value="1000000000" min="2" onchange="runCollisionCalculator()" style="padding: 0.75rem 1rem; background: rgba(0,0,0,0.3); border: 1px solid var(--card-border); border-radius: 8px; width: 100%; color: white; font-family: var(--mono-font); font-size: 0.85rem;">
+          </div>
+          <div>
+            <button class="btn btn-primary" onclick="runCollisionCalculator()">🎲 Compute Probability</button>
+          </div>
+        </div>
+
+        <!-- Collision Result -->
+        <div id="collision-result-box" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--card-border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;">
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.25rem;">
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Collision Probability</div>
+              <div style="font-size: 1.4rem; font-weight: 700; color: #34d399;" id="col-prob-val">0.0%</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Birthday Bound (50% Collision Point)</div>
+              <div style="font-size: 1.4rem; font-weight: 700; color: #60a5fa;" id="col-bound-val">2^128 items</div>
+            </div>
+            <div>
+              <div style="font-size: 0.75rem; color: var(--text-muted);">Cryptographic Assessment</div>
+              <div style="font-size: 1rem; font-weight: 600; color: #fbbf24;" id="col-verdict-val">CRYPTOGRAPHICALLY SECURE</div>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 0.75rem;">Cryptographic Attack Feasibility Matrix (Figures 8 & 9)</h3>
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Algorithm</th>
+                <th>Bits</th>
+                <th>Collision Work Factor</th>
+                <th>Preimage Work Factor</th>
+                <th>Status</th>
+                <th>Known Attack Vector</th>
+              </tr>
+            </thead>
+            <tbody id="attack-matrix-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   </main>
 
   <footer>
@@ -940,6 +1119,12 @@
         populateLocalizeDropdown();
       } else if (tabId === 'benchmark-tab') {
         runBenchmark();
+      } else if (tabId === 'robustness-tab') {
+        runRobustnessEvaluation();
+      } else if (tabId === 'signature-tab') {
+        populateSignatureDropdown();
+      } else if (tabId === 'collision-tab') {
+        runCollisionCalculator();
       }
     }
 
@@ -1170,6 +1355,7 @@
                 <button class="btn btn-sm btn-primary" onclick="verifySingle('${r.transfer_id}')">🔍 Verify</button>
                 <button class="btn btn-sm btn-purple" title="Inspect Block Power Index" onclick="jumpToLocalize('${r.transfer_id}')">🎯 Localize</button>
                 <button class="btn btn-sm btn-danger" title="Inject Tampered Bytes" onclick="tamperSingle('${r.transfer_id}')">⚡ Tamper</button>
+                <button class="btn btn-sm btn-secondary" title="Export Research & Forensic Report" onclick="exportReport('${r.transfer_id}')">📄 Report</button>
                 <a class="btn btn-sm btn-secondary" href="/api/download/${r.transfer_id}" target="_blank">⬇️</a>
               </div>
             </td>
@@ -1467,6 +1653,158 @@
         `;
       } catch (err) {
         alert('Hash computation failed: ' + err.message);
+      }
+    }
+
+    // Robustness Perturbation Lab (Table 2 & Figure 12)
+    async function runRobustnessEvaluation() {
+      const text = document.getElementById('robustness-text-input').value;
+      const resDiv = document.getElementById('robustness-result');
+      const scDiv = document.getElementById('robustness-scenarios');
+
+      try {
+        const resp = await fetch('/api/robustness-test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: text })
+        });
+        const res = await resp.json();
+        resDiv.style.display = 'block';
+
+        const scores = res.table2_criteria_scores;
+        document.getElementById('score-agnosticism').textContent = `${scores.structural_agnosticism}/100`;
+        document.getElementById('score-resilience').textContent = `${scores.error_resilience}/100`;
+        document.getElementById('score-stability').textContent = `${scores.operational_stability}/100`;
+        document.getElementById('score-overall').textContent = `${scores.overall_robustness_index}/100`;
+
+        scDiv.innerHTML = '';
+        res.scenarios.forEach(sc => {
+          const card = document.createElement('div');
+          card.style.background = 'rgba(15, 23, 42, 0.6)';
+          card.style.border = '1px solid var(--card-border)';
+          card.style.borderRadius = '10px';
+          card.style.padding = '1.25rem';
+
+          card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <h4 style="font-size: 0.95rem; font-weight: 600;">${sc.scenario}</h4>
+              <span class="badge ${sc.detected ? 'badge-verified' : 'badge-mismatch'}">${sc.detected ? 'DETECTED' : 'MISSED'}</span>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              Perturbed SHA-256 Digest:
+              <div style="font-family: var(--mono-font); color: #93c5fd; font-size: 0.75rem; word-break: break-all; margin-top: 0.25rem;">${sc.new_sha256}</div>
+            </div>
+            <div style="font-size: 0.75rem; color: #a78bfa;">
+              ${sc.meta.description || `Injected noise at ${sc.meta.modified_bytes_count || 1} byte position(s)`}
+            </div>
+          `;
+          scDiv.appendChild(card);
+        });
+      } catch (err) {
+        alert('Robustness test error: ' + err.message);
+      }
+    }
+
+    // Forensic Residual Signature (RQ v)
+    function populateSignatureDropdown() {
+      const sel = document.getElementById('signature-transfer-select');
+      sel.innerHTML = '<option value="">Select a transfer record...</option>';
+      currentTransfers.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.transfer_id;
+        opt.textContent = `${t.original_filename} (${t.transfer_id.substring(0, 8)}...) - ${t.status}`;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function traceResidualSignature() {
+      const sel = document.getElementById('signature-transfer-select');
+      const transferId = sel.value;
+      if (!transferId) {
+        alert('Please select a transfer record from the dropdown.');
+        return;
+      }
+
+      try {
+        const resp = await fetch('/api/trace-signature', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ transfer_id: transferId })
+        });
+        const res = await resp.json();
+        if (res.status === 'FAILED') {
+          alert('Trace error: ' + res.error);
+          return;
+        }
+
+        document.getElementById('signature-result').style.display = 'block';
+        document.getElementById('sig-class').textContent = res.tamper_classification;
+        document.getElementById('sig-conf').textContent = `Confidence: ${res.confidence_percentage}%`;
+        document.getElementById('sig-bytes').textContent = `${res.total_bytes_altered} byte(s)`;
+        document.getElementById('sig-blocks').textContent = `${res.corrupted_blocks_count} block(s) altered`;
+        document.getElementById('sig-entropy').textContent = `${res.overall_entropy.shift >= 0 ? '+' : ''}${res.overall_entropy.shift.toFixed(4)}`;
+        document.getElementById('sig-entropy-sub').textContent = `Orig: ${res.overall_entropy.original} -> Tamp: ${res.overall_entropy.tampered}`;
+        document.getElementById('sig-desc').textContent = res.description;
+        document.getElementById('sig-hash').textContent = res.residual_signature_hash;
+      } catch (err) {
+        alert('Forensic trace failed: ' + err.message);
+      }
+    }
+
+    // Birthday Attack & Collision Calculator
+    async function runCollisionCalculator() {
+      const bits = document.getElementById('collision-algo-select').value;
+      const items = document.getElementById('collision-items-input').value;
+
+      try {
+        const resp = await fetch(`/api/collision-calculator?items=${items}&bits=${bits}`);
+        const data = await resp.json();
+        const c = data.collision_analysis;
+
+        document.getElementById('col-prob-val').textContent = c.collision_probability_formatted;
+        document.getElementById('col-bound-val').textContent = `2^${c.birthday_bound_bits} items`;
+        document.getElementById('col-verdict-val').textContent = c.security_verdict;
+
+        const tbody = document.getElementById('attack-matrix-tbody');
+        tbody.innerHTML = '';
+        data.attack_feasibility_matrix.forEach(m => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight: 700; font-family: var(--mono-font);">${m.algorithm}</td>
+            <td>${m.digest_bits} bits</td>
+            <td style="font-family: var(--mono-font); color: #93c5fd;">${m.collision_resistance_work}</td>
+            <td style="font-family: var(--mono-font);">${m.preimage_resistance_work}</td>
+            <td>
+              <span class="badge ${m.is_cryptographically_broken ? 'badge-mismatch' : 'badge-verified'}">
+                ${m.is_cryptographically_broken ? 'BROKEN / DEPRECATED' : 'SECURE'}
+              </span>
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-muted);">${m.attack_history}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (err) {
+        console.error('Collision calculator error:', err);
+      }
+    }
+
+    // Export Academic Report
+    async function exportReport(transferId) {
+      try {
+        const resp = await fetch(`/api/report/${transferId}`);
+        const report = await resp.json();
+        const jsonStr = JSON.stringify(report, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `integrity_audit_report_${transferId.substring(0, 8)}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Could not export audit report: ' + err.message);
       }
     }
 

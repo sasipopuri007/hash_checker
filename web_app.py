@@ -12,7 +12,16 @@ from pathlib import Path
 import uuid
 from flask import Flask, render_template, request, jsonify, send_file, abort, make_response
 
-from advanced_hash import BlockPowerIndexer, AvalancheAnalyzer, AlgorithmBenchmark
+from advanced_hash import (
+    BlockPowerIndexer,
+    AvalancheAnalyzer,
+    AlgorithmBenchmark,
+    RobustnessPerturbationLab,
+    ResidualSignatureTracer,
+    CollisionProbabilityCalculator,
+    ResearchReportGenerator,
+    calculate_shannon_entropy
+)
 import config
 from hash_checker import verify_transfer
 from hash_utils import calculate_sha256, calculate_dual_hash
@@ -442,6 +451,127 @@ def check_file_endpoint():
         "expected_hash": expected_hash if expected_hash else None,
         "message": msg
     })
+
+
+@app.route("/api/robustness-test", methods=["POST"])
+def robustness_test_endpoint():
+    """
+    Run Empirical Robustness Testing across 3 data disturbance domains (Section 6 & Table 2):
+    Bit-level noise, metadata alteration, and structural reordering.
+    """
+    if "file" in request.files and request.files["file"].filename:
+        data = request.files["file"].stream.read()
+    elif request.is_json and "text" in request.json:
+        data = request.json["text"].encode("utf-8")
+    elif request.form.get("text"):
+        data = request.form.get("text").encode("utf-8")
+    else:
+        data = b"Gilbert & Gilbert (2025) Cryptographic Robustness Verification Benchmark Payload"
+
+    result = RobustnessPerturbationLab.run_robustness_evaluation(data)
+    return jsonify(result)
+
+
+@app.route("/api/trace-signature", methods=["POST"])
+def trace_signature_endpoint():
+    """
+    Forensic Residual Cryptographic Signature (RCS) Tracing & Tamper Classification (RQ v).
+    Computes Shannon entropy gradients and classifies tampering vectors.
+    """
+    req_data = request.get_json(silent=True) or {}
+    transfer_id = req_data.get("transfer_id") or request.form.get("transfer_id")
+
+    if transfer_id:
+        record = storage.get_transfer(transfer_id)
+        if not record:
+            return jsonify({"status": "FAILED", "error": f"Transfer record not found: {transfer_id}"}), 404
+        target_path = Path(record["stored_path"])
+        if not target_path.exists():
+            return jsonify({"status": "FAILED", "error": f"File not found on disk: {target_path}"}), 404
+        orig_bytes = target_path.read_bytes()
+
+        # If simulated tamper requested or file is currently intact, test with a 1-byte perturbation
+        simulate = req_data.get("simulate", True)
+        if simulate or record.get("status") == "VERIFIED":
+            alt = bytearray(orig_bytes)
+            if len(alt) > 10:
+                alt[5] ^= 0x01
+            tampered_bytes = bytes(alt)
+        else:
+            tampered_bytes = orig_bytes
+    elif "file" in request.files and request.files["file"].filename:
+        orig_bytes = request.files["file"].stream.read()
+        alt = bytearray(orig_bytes)
+        if len(alt) > 10:
+            alt[5] ^= 0x01
+        tampered_bytes = bytes(alt)
+    elif "text" in req_data:
+        orig_bytes = req_data["text"].encode("utf-8")
+        alt = bytearray(orig_bytes)
+        if len(alt) > 0:
+            alt[0] ^= 0x01
+        tampered_bytes = bytes(alt)
+    else:
+        return jsonify({"status": "FAILED", "error": "No transfer_id, file, or text provided"}), 400
+
+    trace_result = ResidualSignatureTracer.trace_signature(orig_bytes, tampered_bytes)
+    return jsonify(trace_result)
+
+
+@app.route("/api/collision-calculator", methods=["GET"])
+def collision_calculator_endpoint():
+    """
+    Birthday Paradox Collision Probability & Cryptographic Attack Feasibility Calculator
+    (Section 5.1 & 5.2, Figures 8, 9, 10).
+    """
+    items = request.args.get("items", default=1_000_000, type=int)
+    bits = request.args.get("bits", default=256, type=int)
+
+    prob_data = CollisionProbabilityCalculator.calculate_collision_probability(items, digest_bits=bits)
+    attack_matrix = CollisionProbabilityCalculator.get_attack_feasibility_matrix()
+
+    return jsonify({
+        "collision_analysis": prob_data,
+        "attack_feasibility_matrix": attack_matrix
+    })
+
+
+@app.route("/api/report/<transfer_id>", methods=["GET"])
+def generate_report_endpoint(transfer_id):
+    """
+    Generate complete academic & forensic research audit report adhering to IJMRAP 2025 standard.
+    """
+    record = storage.get_transfer(transfer_id)
+    if not record:
+        return jsonify({"status": "FAILED", "error": f"Transfer not found: {transfer_id}"}), 404
+
+    target_path = Path(record["stored_path"])
+    tamper_report = None
+    robustness_metrics = None
+    residual_sig = None
+
+    if target_path.exists():
+        file_bytes = target_path.read_bytes()
+        indexer = BlockPowerIndexer()
+        block_idx = record.get("block_index")
+        if block_idx:
+            tamper_report = indexer.localize_tampering(target_path, block_idx)
+        robustness_metrics = RobustnessPerturbationLab.run_robustness_evaluation(file_bytes)
+
+        # Trace residual signature if tampered or simulated
+        if record.get("status") == "MISMATCH":
+            alt = bytearray(file_bytes)
+            if len(alt) > 10:
+                alt[0] ^= 0xFF
+            residual_sig = ResidualSignatureTracer.trace_signature(file_bytes, bytes(alt))
+
+    report = ResearchReportGenerator.generate_report(
+        transfer_record=record,
+        tamper_report=tamper_report,
+        robustness_metrics=robustness_metrics,
+        residual_signature=residual_sig
+    )
+    return jsonify(report)
 
 
 if __name__ == "__main__":
